@@ -392,7 +392,7 @@ async function takePhoto() {
 async function getBoxData() {
   boxId.value = route.params.id;
   try {
-    const res = await axios.get(`http://172.29.211.32:3000/user-code-box/${boxId.value}`);
+    const res = await axios.get(`${API_BASE_URL}/user-code-box/${boxId.value}`);
   if (!res.data) throw new Error('Error getting data');
     const data = res.data;
     // Rellena los campos del formulario con los datos de la caja
