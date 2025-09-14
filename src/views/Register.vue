@@ -73,8 +73,8 @@ async function handleRegister(e) {
             email: email.value,
             password: password.value
         });
-        localStorage.setItem('jwt', res.data.token);
-        router.push('/');
+        // localStorage.setItem('jwt', res.data.token);
+        router.push('/login');
     } catch (err) {
         error.value = err.response?.data?.message || err.message || 'Connection error';
     }
