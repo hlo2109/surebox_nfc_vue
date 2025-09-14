@@ -45,6 +45,7 @@ import { ref, onMounted } from 'vue';
 
 const boxes = ref([]);
 const error = ref('');
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 async function fetchBoxes() {
   error.value = '';
@@ -52,7 +53,7 @@ async function fetchBoxes() {
     console.log(localStorage);
     const jwt = localStorage.getItem('jwt');
     console.log('JWT:', jwt); // Añade este log para verificar el JWT
-    const res = await fetch('http://172.29.211.32:3000/user-code-box', {
+    const res = await fetch(`${API_BASE_URL}/user-code-box`, {
       headers: { 'Authorization': `Bearer ${jwt}` }
     });
     if (!res.ok) throw new Error('Error al obtener datos');
