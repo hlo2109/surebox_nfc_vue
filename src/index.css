@@ -1,5 +1,9 @@
 @import "tailwindcss";
+@import 'tailwindcss-primeui';
+
 @theme {
-  --color-primary-500: #4b53fa;
-  --color-primary-200: #6469db;
+	--color-primary-500: #0D65AE;
+	--color-primary-200: #094E88;
+	--p-button-primary-background: blue;
+	--p-button-primary-color: red;
 }
