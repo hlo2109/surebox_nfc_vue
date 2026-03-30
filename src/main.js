@@ -3,6 +3,7 @@ import PrimeVue from 'primevue/config';
 import Aura from '@primeuix/themes/aura';
 import { definePreset } from '@primeuix/themes';
 import ToastService from 'primevue/toastservice';
+import ConfirmationService from 'primevue/confirmationservice';
 import 'primeicons/primeicons.css'
 import App from './App.vue';
 import './index.css';
@@ -40,5 +41,6 @@ app.use(PrimeVue, {
 	}
 });
 app.use(ToastService);
+app.use(ConfirmationService);
 app.use(router);
 app.mount('#app');
