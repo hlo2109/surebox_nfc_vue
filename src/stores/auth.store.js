@@ -34,6 +34,14 @@ const hasRole = (roleName) => {
 
 const isAdmin = computed(() => hasRole('admin') || hasRole('super_admin'));
 
+// Flat list of permission names extracted from the API user object
+// e.g. [{ id: 1, name: "create_company" }, ...] → ["create_company", ...]
+const userPermissions = computed(() => {
+	const perms = state.user?.permissions;
+	if (!Array.isArray(perms)) return [];
+	return perms.map((p) => (typeof p === 'string' ? p : p?.name)).filter(Boolean);
+});
+
 const userCompanies = computed(() => state.user?.companies || []);
 
 const hasCompany = computed(() => {
@@ -42,20 +50,27 @@ const hasCompany = computed(() => {
 });
 
 const companyId = computed(() => {
-	// First check if user has a direct company_id or companyId
-	if (state.user?.company_id) return state.user.company_id;
-	if (state.user?.companyId) return state.user.companyId;
-
-	// Otherwise, get the first company from the companies array
 	const companies = state.user?.companies || [];
 	if (companies.length > 0) {
-		return companies[0].company_id || companies[0].id;
+		return companies[0].company_uuid;
 	}
 
 	return null;
 });
 
-const company_id = computed(() => companyId.value);
+// The role the current user holds inside their company (e.g. 'admin' | 'employee')
+const companyRole = computed(() => {
+	const companies = state.user?.companies || [];
+	if (companies.length > 0) {
+		return companies[0].role_in_company
+			|| (typeof companies[0].role === 'string' ? companies[0].role : companies[0].role?.name)
+			|| null;
+	}
+	return null;
+});
+
+// True only when the user's company role is 'admin' (i.e. the company owner/creator)
+const isCompanyAdmin = computed(() => companyRole.value === 'admin');
 
 // Actions
 const setAuthData = (data) => {
@@ -120,10 +135,12 @@ export const useAuthStore = () => {
 		isAuthenticated,
 		isAdmin,
 		userRoles,
+		userPermissions,
 		userCompanies,
 		hasCompany,
 		companyId,
-		company_id,
+		companyRole,
+		isCompanyAdmin,
 
 		// Actions
 		setAuthData,

@@ -36,12 +36,14 @@ export const login = async (credentials) => {
 		if (import.meta.env.DEV) {
 			console.log('Login attempt for:', credentials.email);
 		}
+		console.log('Login attempt for:', credentials);
 		const response = await apiClient.post('/auth/login', credentials);
 		if (import.meta.env.DEV) {
 			console.log('Login successful');
 		}
 		return response.data;
 	} catch (error) {
+		console.log('error;', error);
 		if (import.meta.env.DEV) {
 			console.error('Login error:', error.message);
 		}
@@ -105,6 +107,38 @@ export const getCurrentUser = async () => {
 	}
 };
 
+/**
+ * Get invitation details by token
+ * @param {string} token - Invitation token from email link
+ * @returns {Promise<object>} Response with invitation data
+ */
+export const getInvitation = async (token) => {
+	try {
+		const response = await apiClient.get(`/auth/invitations/${token}`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Accept a company invitation
+ * @param {string} token - Invitation token from email link
+ * @param {object} data - Acceptance data (required only for new accounts)
+ * @param {string} data.name - Full name (required if email not yet registered)
+ * @param {string} data.password - Password (required if email not yet registered)
+ * @param {string} data.phone - Phone number (optional)
+ * @returns {Promise<object>} Response with acceptance confirmation
+ */
+export const acceptInvitation = async (token, data = {}) => {
+	try {
+		const response = await apiClient.post(`/auth/invitations/${token}/accept`, data);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
 export default {
 	register,
 	login,
@@ -112,4 +146,6 @@ export default {
 	changePassword,
 	logout,
 	getCurrentUser,
+	getInvitation,
+	acceptInvitation,
 };

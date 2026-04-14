@@ -241,6 +241,7 @@
 							Navigation
 						</p>
 						<ul class="space-y-1">
+							<!-- Everyone: Dashboard -->
 							<li>
 								<router-link
 									to="/"
@@ -268,7 +269,62 @@
 									<span>Dashboard</span>
 								</router-link>
 							</li>
-							<li v-if="canViewNfc">
+							<!-- Normal users only -->
+							<li v-if="!hasCompany">
+								<router-link
+									to="/services"
+									@click="closeSidebarMobile"
+									:class="[
+										'flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 border',
+										isActive('/services')
+											? 'bg-[#0D65AE]/5 text-[#0D65AE] border-[#0D65AE]/20'
+											: 'text-gray-700 hover:bg-gray-50 border-transparent',
+									]"
+								>
+									<svg
+										class="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+										></path>
+									</svg>
+									<span>Browse Services</span>
+								</router-link>
+							</li>
+							<li v-if="!hasCompany">
+								<router-link
+									to="/requests"
+									@click="closeSidebarMobile"
+									:class="[
+										'flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 border',
+										isActive('/requests')
+											? 'bg-[#0D65AE]/5 text-[#0D65AE] border-[#0D65AE]/20'
+											: 'text-gray-700 hover:bg-gray-50 border-transparent',
+									]"
+								>
+									<svg
+										class="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+										></path>
+									</svg>
+									<span>My Requests</span>
+								</router-link>
+							</li>
+							<li v-if="!hasCompany && canViewNfc">
 								<router-link
 									to="/mybox"
 									@click="closeSidebarMobile"
@@ -297,41 +353,28 @@
 									<span>My Boxes</span>
 								</router-link>
 							</li>
-							<li>
-								<router-link
-									to="/delivery"
-									@click="closeSidebarMobile"
-									:class="[
-										'flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 border',
-										isActive('/delivery') ||
-										isActive('/delivery')
-											? 'bg-[#0D65AE]/5 text-[#0D65AE] border-[#0D65AE]/20'
-											: 'text-gray-700 hover:bg-gray-50 border-transparent',
-									]"
+
+							<!-- Company users: global menu -->
+							<!-- Company name header -->
+							<li v-if="hasCompany" class="px-3 pt-2 pb-1">
+								<span
+									class="text-xs font-bold text-gray-500 uppercase tracking-wider"
 								>
-									<svg
-										class="w-5 h-5"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-										></path>
-									</svg>
-									<span>Deliveries</span>
-								</router-link>
+									My Company
+								</span>
 							</li>
+
+							<!-- My Company (view/edit) -->
 							<li v-if="hasCompany">
 								<router-link
 									to="/my-company"
 									@click="closeSidebarMobile"
 									:class="[
 										'flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 border',
-										isActive('/my-company')
+										isActive('/my-company') &&
+										!isActive('/my-company/requests') &&
+										!isActive('/my-company/members') &&
+										!isActive('/my-company/locations')
 											? 'bg-[#0D65AE]/5 text-[#0D65AE] border-[#0D65AE]/20'
 											: 'text-gray-700 hover:bg-gray-50 border-transparent',
 									]"
@@ -352,7 +395,73 @@
 									<span>My Company</span>
 								</router-link>
 							</li>
-							<li v-if="hasCompany">
+
+							<!-- Orders (service requests) — admin only -->
+							<li v-if="hasCompany && isCompanyAdmin">
+								<router-link
+									to="/my-company/requests"
+									@click="closeSidebarMobile"
+									:class="[
+										'flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 border',
+										isActive('/my-company/requests')
+											? 'bg-[#0D65AE]/5 text-[#0D65AE] border-[#0D65AE]/20'
+											: 'text-gray-700 hover:bg-gray-50 border-transparent',
+									]"
+								>
+									<svg
+										class="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+										></path>
+									</svg>
+									<span>Orders</span>
+								</router-link>
+							</li>
+
+							<!-- Locations (admin only) -->
+							<li v-if="hasCompany && isCompanyAdmin">
+								<router-link
+									to="/my-company/locations"
+									@click="closeSidebarMobile"
+									:class="[
+										'flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 border',
+										isActive('/my-company/locations')
+											? 'bg-[#0D65AE]/5 text-[#0D65AE] border-[#0D65AE]/20'
+											: 'text-gray-700 hover:bg-gray-50 border-transparent',
+									]"
+								>
+									<svg
+										class="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+										></path>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+										></path>
+									</svg>
+									<span>Locations</span>
+								</router-link>
+							</li>
+
+							<!-- Services (admin only — employees don't manage services) -->
+							<li v-if="hasCompany && isCompanyAdmin">
 								<router-link
 									to="/my-services"
 									@click="closeSidebarMobile"
@@ -376,16 +485,18 @@
 											d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
 										></path>
 									</svg>
-									<span>My Services</span>
+									<span>Services</span>
 								</router-link>
 							</li>
-							<li>
+
+							<!-- Members (admin only) -->
+							<li v-if="hasCompany && isCompanyAdmin">
 								<router-link
-									to="/services"
+									to="/my-company/members"
 									@click="closeSidebarMobile"
 									:class="[
 										'flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 border',
-										isActive('/services')
+										isActive('/my-company/members')
 											? 'bg-[#0D65AE]/5 text-[#0D65AE] border-[#0D65AE]/20'
 											: 'text-gray-700 hover:bg-gray-50 border-transparent',
 									]"
@@ -400,10 +511,68 @@
 											stroke-linecap="round"
 											stroke-linejoin="round"
 											stroke-width="2"
-											d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+											d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
 										></path>
 									</svg>
-									<span>Services</span>
+									<span>Members</span>
+								</router-link>
+							</li>
+
+							<!-- My Assignments (employees only — non-admin company members) -->
+							<li v-if="isCompanyEmployee">
+								<router-link
+									to="/my-assignments"
+									@click="closeSidebarMobile"
+									:class="[
+										'flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 border',
+										isActive('/my-assignments')
+											? 'bg-[#0D65AE]/5 text-[#0D65AE] border-[#0D65AE]/20'
+											: 'text-gray-700 hover:bg-gray-50 border-transparent',
+									]"
+								>
+									<svg
+										class="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+										></path>
+									</svg>
+									<span>My Assignments</span>
+								</router-link>
+							</li>
+
+							<!-- Invitations (admin only) -->
+							<li v-if="hasCompany && isCompanyAdmin">
+								<router-link
+									to="/my-company/invitations"
+									@click="closeSidebarMobile"
+									:class="[
+										'flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 border',
+										isActive('/my-company/invitations')
+											? 'bg-[#0D65AE]/5 text-[#0D65AE] border-[#0D65AE]/20'
+											: 'text-gray-700 hover:bg-gray-50 border-transparent',
+									]"
+								>
+									<svg
+										class="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+										></path>
+									</svg>
+									<span>Invitations</span>
 								</router-link>
 							</li>
 						</ul>
@@ -417,7 +586,7 @@
 							Quick Actions
 						</p>
 						<ul class="space-y-1">
-							<li>
+							<li v-if="canCreateNfc">
 								<router-link
 									to="/create-box"
 									@click="closeSidebarMobile"
@@ -437,6 +606,36 @@
 										></path>
 									</svg>
 									<span>Add New Box</span>
+								</router-link>
+							</li>
+							<li v-if="!hasCompany">
+								<router-link
+									to="/requests/create"
+									@click="closeSidebarMobile"
+									class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 border border-transparent hover:border-gray-200"
+								>
+									<svg
+										class="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<circle
+											cx="12"
+											cy="12"
+											r="9"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+										></circle>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M12 4v16m8-8H4"
+										></path>
+									</svg>
+									<span>New Service Request</span>
 								</router-link>
 							</li>
 						</ul>
@@ -539,28 +738,28 @@ import { useAuthStore } from "@/stores/auth.store";
 import { usePermissions } from "@/composables/usePermissions";
 
 const route = useRoute();
-const { logout: logoutUser } = useAuth();
+const { logout: logoutUser, getCurrentUser } = useAuth();
 const authStore = useAuthStore();
 const { canViewNfc, canCreateNfc } = usePermissions();
+
 const sidebarOpen = ref(false);
 const userDropdownOpen = ref(false);
-const userName = ref("User");
-const userEmail = ref("user@example.com");
+// Derive display name and email reactively from the store so they always
+// reflect the latest data fetched from the API.
+const userName = computed(() => authStore.state.user?.name || "User");
+const userEmail = computed(
+	() => authStore.state.user?.email || "user@example.com",
+);
 
 // Computed property to check if user has company
-const hasCompany = computed(() => {
-	const user = authStore.state.user;
-	console.log("🔍 Checking hasCompany:", {
-		user: user,
-		hasCompany: authStore.hasCompany.value,
-		companies: user?.companies,
-		company_id: user?.company_id,
-		companyId: user?.companyId,
-		"authStore.companyId.value": authStore.companyId.value,
-		"authStore.company_id.value": authStore.company_id.value,
-	});
-	return authStore.hasCompany.value;
-});
+const hasCompany = computed(() => authStore.hasCompany.value);
+
+// isCompanyAdmin → role_in_company === 'admin' (company creator/owner)
+// isCompanyEmployee → has a company but is NOT the admin (invited member)
+const isCompanyAdmin = computed(() => authStore.isCompanyAdmin.value);
+const isCompanyEmployee = computed(
+	() => hasCompany.value && !isCompanyAdmin.value,
+);
 
 function toggleSidebar() {
 	sidebarOpen.value = !sidebarOpen.value;
@@ -606,35 +805,10 @@ const userInitials = computed(() => {
 	return userName.value.substring(0, 2).toUpperCase();
 });
 
-onMounted(() => {
-	// Load user info from localStorage
-	const storedUser = localStorage.getItem("user");
-	if (storedUser) {
-		try {
-			const user = JSON.parse(storedUser);
-			userName.value = user.name || "User";
-			userEmail.value = user.email || "user@example.com";
-
-			// Debug: Log user data to see company information
-			console.log("👤 User loaded in MainLayout:", user);
-			console.log("🏢 Company check:", {
-				companies: user.companies,
-				company_id: user.company_id,
-				companyId: user.companyId,
-				hasCompany:
-					(user.companies && user.companies.length > 0) ||
-					!!user.company_id ||
-					!!user.companyId,
-			});
-			console.log("🔑 Permissions:", {
-				canViewNfc: canViewNfc.value,
-				canCreateNfc: canCreateNfc.value,
-			});
-		} catch {
-			userName.value = "User";
-			userEmail.value = "user@example.com";
-		}
-	}
+onMounted(async () => {
+	// Refresh the user from the API so roles/permissions are always up-to-date.
+	// The store persists the result to localStorage automatically.
+	await getCurrentUser();
 
 	// Close dropdown when clicking outside
 	document.addEventListener("click", handleClickOutside);

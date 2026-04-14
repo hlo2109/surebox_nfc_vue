@@ -18,9 +18,16 @@ import ServicesList from './views/services/ServicesList.vue';
 import CompanyServices from './views/services/CompanyServices.vue';
 import ServiceDetail from './views/services/ServiceDetail.vue';
 import MyCompanyServices from './views/services/MyCompanyServices.vue';
+import MyCompanyRequests from './views/companies/MyCompanyRequests.vue';
+import MyCompanyMembers from './views/companies/MyCompanyMembers.vue';
+import MyCompanyInvitations from './views/companies/MyCompanyInvitations.vue';
+import MyCompanyLocations from './views/companies/MyCompanyLocations.vue';
+import MyCompanyCategories from './views/services/MyCompanyCategories.vue';
 import MyRequests from './views/requests/MyRequests.vue';
 import CreateRequest from './views/requests/CreateRequest.vue';
 import RequestDetail from './views/requests/RequestDetail.vue';
+import MyAssignments from './views/employee/MyAssignments.vue';
+import AssignmentDetail from './views/employee/AssignmentDetail.vue';
 import Profile from './views/Profile.vue';
 import Settings from './views/Settings.vue';
 import Unauthorized from './views/Unauthorized.vue';
@@ -178,7 +185,7 @@ const routes = [
 	{
 		path: '/my-services',
 		component: () => import('./layouts/MainLayout.vue'),
-		meta: { requiresCompany: true },
+		meta: { requiresCompany: true, requiresCompanyAdmin: true },
 		children: [
 			{
 				path: '',
@@ -187,6 +194,67 @@ const routes = [
 			},
 		],
 	},
+	{
+		path: '/my-company/requests',
+		component: () => import('./layouts/MainLayout.vue'),
+		meta: { requiresCompany: true },
+		children: [
+			{
+				path: '',
+				name: 'MyCompanyRequests',
+				component: MyCompanyRequests
+			},
+		],
+	},
+	{
+		path: '/my-company/members',
+		component: () => import('./layouts/MainLayout.vue'),
+		meta: { requiresCompany: true, requiresCompanyAdmin: true },
+		children: [
+			{
+				path: '',
+				name: 'MyCompanyMembers',
+				component: MyCompanyMembers
+			},
+		],
+	},
+	{
+		path: '/my-company/invitations',
+		component: () => import('./layouts/MainLayout.vue'),
+		meta: { requiresCompany: true, requiresCompanyAdmin: true },
+		children: [
+			{
+				path: '',
+				name: 'MyCompanyInvitations',
+				component: MyCompanyInvitations
+			},
+		],
+	},
+	{
+		path: '/my-company/locations',
+		component: () => import('./layouts/MainLayout.vue'),
+		meta: { requiresCompany: true, requiresCompanyAdmin: true },
+		children: [
+			{
+				path: '',
+				name: 'MyCompanyLocations',
+				component: MyCompanyLocations
+			},
+		],
+	},
+	{
+		path: '/my-services/categories',
+		component: () => import('./layouts/MainLayout.vue'),
+		meta: { requiresCompany: true, requiresCompanyAdmin: true },
+		children: [
+			{
+				path: '',
+				name: 'MyCompanyCategories',
+				component: MyCompanyCategories
+			},
+		],
+	},
+
 	{
 		path: '/companies/:companyId/services',
 		component: () => import('./layouts/MainLayout.vue'),
@@ -202,6 +270,7 @@ const routes = [
 	{
 		path: '/requests',
 		component: () => import('./layouts/MainLayout.vue'),
+		meta: { requiresNoCompany: true },
 		children: [
 			{
 				path: '',
@@ -211,8 +280,34 @@ const routes = [
 		],
 	},
 	{
+		path: '/my-assignments',
+		component: () => import('./layouts/MainLayout.vue'),
+		meta: { requiresCompany: true },
+		children: [
+			{
+				path: '',
+				name: 'MyAssignments',
+				component: MyAssignments
+			},
+		],
+	},
+	{
+		path: '/my-assignments/:id',
+		component: () => import('./layouts/MainLayout.vue'),
+		meta: { requiresCompany: true },
+		children: [
+			{
+				path: '',
+				name: 'AssignmentDetail',
+				component: AssignmentDetail,
+				props: true
+			},
+		],
+	},
+	{
 		path: '/requests/create',
 		component: () => import('./layouts/MainLayout.vue'),
+		meta: { requiresNoCompany: true },
 		children: [
 			{
 				path: '',
@@ -224,6 +319,7 @@ const routes = [
 	{
 		path: '/requests/:id',
 		component: () => import('./layouts/MainLayout.vue'),
+		meta: { requiresNoCompany: true },
 		children: [
 			{
 				path: '',
@@ -316,6 +412,32 @@ router.beforeEach((to, from, next) => {
 		}
 	}
 
+	// Check if route requires company-admin role (role_in_company === 'admin')
+	if (to.meta.requiresCompanyAdmin) {
+		const authStore = useAuthStore();
+		const user = authStore.state.user;
+
+		if (!user) {
+			return next('/login');
+		}
+
+		const companies = user.companies || [];
+		const roleInCompany = companies.length > 0
+			? (companies[0].role_in_company
+				|| (typeof companies[0].role === 'string' ? companies[0].role : companies[0].role?.name)
+				|| null)
+			: null;
+
+		if (roleInCompany !== 'admin') {
+			return next({
+				path: '/unauthorized',
+				query: {
+					message: 'Only company administrators can access this page.'
+				}
+			});
+		}
+	}
+
 	// Check if route requires company
 	if (to.meta.requiresCompany) {
 		const authStore = useAuthStore();
@@ -337,6 +459,22 @@ router.beforeEach((to, from, next) => {
 					message: 'You need to be associated with a company to access this page.'
 				}
 			});
+		}
+	}
+
+	// Check if route requires NO company (customer-only routes)
+	if (to.meta.requiresNoCompany) {
+		const authStore = useAuthStore();
+		const user = authStore.state.user;
+
+		if (user) {
+			const hasCompany = (user.companies && user.companies.length > 0) ||
+				!!user.company_id ||
+				!!user.companyId;
+
+			if (hasCompany) {
+				return next('/my-company');
+			}
 		}
 	}
 

@@ -246,6 +246,7 @@
 					class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6"
 				>
 					<ServiceCategoriesManager
+						:company-id="companyId"
 						:categories="categories"
 						:loading="loadingCategories"
 						:can-create="canManageCompany"

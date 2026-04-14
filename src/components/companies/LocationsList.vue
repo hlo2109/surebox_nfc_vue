@@ -1,3 +1,4 @@
+<!-- AddressAutocomplete is used for the address field in Add/Edit dialogs -->
 <template>
 	<div class="locations-list">
 		<!-- Header -->
@@ -72,7 +73,7 @@
 		<div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
 			<div
 				v-for="location in locations"
-				:key="location.id"
+				:key="location.uuid"
 				class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
 			>
 				<!-- Location Header -->
@@ -286,38 +287,18 @@
 						>
 							Address *
 						</label>
-						<input
+						<AddressAutocomplete
 							v-model="addForm.address"
-							type="text"
-							required
-							placeholder="Street address"
-							class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all text-sm"
+							placeholder="Search for an address…"
+							:required="true"
+							:disabled="adding"
+							@select="onAddAddressSelect"
 						/>
 					</div>
-					<div>
-						<label
-							class="block text-sm font-semibold text-gray-900 mb-2"
-						>
-							City
-						</label>
-						<input
-							v-model="addForm.city"
-							type="text"
-							placeholder="City"
-							class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all text-sm"
-						/>
-					</div>
-					<div>
-						<label
-							class="block text-sm font-semibold text-gray-900 mb-2"
-						>
-							Country
-						</label>
-						<input
-							v-model="addForm.country"
-							type="text"
-							placeholder="Country"
-							class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all text-sm"
+					<div class="md:col-span-2">
+						<LocationSelector
+							:disabled="adding"
+							@change="onAddLocationChange"
 						/>
 					</div>
 					<div>
@@ -330,19 +311,6 @@
 							v-model="addForm.phone"
 							type="tel"
 							placeholder="Phone number"
-							class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all text-sm"
-						/>
-					</div>
-					<div>
-						<label
-							class="block text-sm font-semibold text-gray-900 mb-2"
-						>
-							City ID
-						</label>
-						<input
-							v-model.number="addForm.cityId"
-							type="number"
-							placeholder="City ID (optional)"
 							class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all text-sm"
 						/>
 					</div>
@@ -481,38 +449,21 @@
 						>
 							Address *
 						</label>
-						<input
+						<AddressAutocomplete
 							v-model="editForm.address"
-							type="text"
-							required
-							placeholder="Street address"
-							class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all text-sm"
+							placeholder="Search for an address…"
+							:required="true"
+							:disabled="editing"
+							@select="onEditAddressSelect"
 						/>
 					</div>
-					<div>
-						<label
-							class="block text-sm font-semibold text-gray-900 mb-2"
-						>
-							City
-						</label>
-						<input
-							v-model="editForm.city"
-							type="text"
-							placeholder="City"
-							class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all text-sm"
-						/>
-					</div>
-					<div>
-						<label
-							class="block text-sm font-semibold text-gray-900 mb-2"
-						>
-							Country
-						</label>
-						<input
-							v-model="editForm.country"
-							type="text"
-							placeholder="Country"
-							class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all text-sm"
+					<div class="md:col-span-2">
+						<LocationSelector
+							:initial-country-id="editForm.countryId"
+							:initial-department-id="editForm.departmentId"
+							:initial-city-id="editForm.cityId"
+							:disabled="editing"
+							@change="onEditLocationChange"
 						/>
 					</div>
 					<div>
@@ -525,19 +476,6 @@
 							v-model="editForm.phone"
 							type="tel"
 							placeholder="Phone number"
-							class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all text-sm"
-						/>
-					</div>
-					<div>
-						<label
-							class="block text-sm font-semibold text-gray-900 mb-2"
-						>
-							City ID
-						</label>
-						<input
-							v-model.number="editForm.cityId"
-							type="number"
-							placeholder="City ID (optional)"
 							class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all text-sm"
 						/>
 					</div>
@@ -728,17 +666,18 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from "vue";
+import LocationSelector from "@/components/common/LocationSelector.vue";
+import AddressAutocomplete from "@/components/common/AddressAutocomplete.vue";
 import Dialog from "primevue/dialog";
 import { useCompanies, useToast } from "@/composables";
 import { formatDate } from "@/utils/formatters";
 
-const { addCompanyLocation, updateCompanyLocation, deleteCompanyLocation } =
-	useCompanies();
+const { addMyCompanyLocation, deleteMyCompanyLocation } = useCompanies();
 const { showToast } = useToast();
 
 const props = defineProps({
 	companyId: {
-		type: Number,
+		type: String,
 		required: true,
 	},
 	locations: {
@@ -751,11 +690,11 @@ const props = defineProps({
 	},
 	canAddLocations: {
 		type: Boolean,
-		default: true,
+		default: false,
 	},
 	canManageLocations: {
 		type: Boolean,
-		default: true,
+		default: false,
 	},
 });
 
@@ -778,6 +717,8 @@ const addForm = ref({
 	country: "",
 	phone: "",
 	cityId: null,
+	countryId: null,
+	departmentId: null,
 	lat: null,
 	lng: null,
 });
@@ -789,6 +730,8 @@ const editForm = ref({
 	country: "",
 	phone: "",
 	cityId: null,
+	countryId: null,
+	departmentId: null,
 	lat: null,
 	lng: null,
 });
@@ -837,11 +780,13 @@ const handleAddLocation = async () => {
 		country: addForm.value.country || undefined,
 		phone: addForm.value.phone || undefined,
 		cityId: addForm.value.cityId || undefined,
+		countryId: addForm.value.countryId || undefined,
+		departmentId: addForm.value.departmentId || undefined,
 		lat: addForm.value.lat || undefined,
 		lng: addForm.value.lng || undefined,
 	};
 
-	const result = await addCompanyLocation(props.companyId, locationData);
+	const result = await addMyCompanyLocation(locationData);
 
 	if (result.success) {
 		showAddDialog.value = false;
@@ -852,6 +797,8 @@ const handleAddLocation = async () => {
 			country: "",
 			phone: "",
 			cityId: null,
+			countryId: null,
+			departmentId: null,
 			lat: null,
 			lng: null,
 		};
@@ -869,6 +816,8 @@ const startEditLocation = (location) => {
 		country: location.country || "",
 		phone: location.phone || "",
 		cityId: location.cityId || location.city_id || null,
+		countryId: location.countryId || location.country_id || null,
+		departmentId: location.departmentId || location.department_id || null,
 		lat: location.lat || null,
 		lng: location.lng || null,
 	};
@@ -876,46 +825,47 @@ const startEditLocation = (location) => {
 };
 
 const handleEditLocation = async () => {
-	if (!locationToEdit.value) return;
-	if (!editForm.value.name || !editForm.value.address) {
-		showToast("error", "Validation Error", "Name and address are required");
-		return;
-	}
-
-	editing.value = true;
-	const locationData = {
-		name: editForm.value.name,
-		address: editForm.value.address,
-		city: editForm.value.city || undefined,
-		country: editForm.value.country || undefined,
-		phone: editForm.value.phone || undefined,
-		cityId: editForm.value.cityId || undefined,
-		lat: editForm.value.lat || undefined,
-		lng: editForm.value.lng || undefined,
-	};
-
-	const result = await updateCompanyLocation(
-		props.companyId,
-		locationToEdit.value.id,
-		locationData,
+	showToast(
+		"error",
+		"Not Supported",
+		"Editing locations is not supported. Please delete this location and create a new one.",
 	);
+	showEditDialog.value = false;
+	locationToEdit.value = null;
+};
 
-	if (result.success) {
-		showEditDialog.value = false;
-		locationToEdit.value = null;
-		editForm.value = {
-			name: "",
-			address: "",
-			city: "",
-			country: "",
-			phone: "",
-			cityId: null,
-			lat: null,
-			lng: null,
-		};
-		emit("refresh");
-	}
-	editing.value = false;
+const onAddLocationChange = (location) => {
+	addForm.value.countryId = location.countryId;
+	addForm.value.country = location.countryName;
+	addForm.value.departmentId = location.departmentId;
+	addForm.value.cityId = location.cityId;
+	addForm.value.city = location.cityName;
+};
+
+const onEditLocationChange = (location) => {
+	editForm.value.countryId = location.countryId;
+	editForm.value.country = location.countryName;
+	editForm.value.departmentId = location.departmentId;
+	editForm.value.cityId = location.cityId;
+	editForm.value.city = location.cityName;
+};
+
+/**
+ * Called when the user picks an address suggestion in the Add dialog.
+ * Auto-populates lat/lng from the Radar response.
+ */
+const onAddAddressSelect = (address) => {
+	if (address.latitude != null) addForm.value.lat = address.latitude;
+	if (address.longitude != null) addForm.value.lng = address.longitude;
+};
+
+/**
+ * Called when the user picks an address suggestion in the Edit dialog.
+ * Auto-populates lat/lng from the Radar response.
+ */
+const onEditAddressSelect = (address) => {
+	if (address.latitude != null) editForm.value.lat = address.latitude;
+	if (address.longitude != null) editForm.value.lng = address.longitude;
 };
 
 const confirmDeleteLocation = (location) => {
@@ -927,10 +877,7 @@ const handleDeleteLocation = async () => {
 	if (!locationToDelete.value) return;
 
 	deleting.value = true;
-	const result = await deleteCompanyLocation(
-		props.companyId,
-		locationToDelete.value.id,
-	);
+	const result = await deleteMyCompanyLocation(locationToDelete.value.uuid);
 
 	if (result.success) {
 		showDeleteDialog.value = false;

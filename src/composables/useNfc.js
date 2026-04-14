@@ -1,3 +1,4 @@
+import { computed } from 'vue';
 import { useNfcStore } from '@/stores/nfc.store';
 import * as nfcApi from '@/api/nfc.api';
 import { useToast } from './useToast';
@@ -145,16 +146,24 @@ export const useNfc = () => {
 			nfcStore.setLoading(true);
 			nfcStore.clearError();
 
+			// DEBUG — remove once the correct identifier is confirmed
+			console.log('[useNfc.deleteNfcTag] calling DELETE /nfc/' + nfcId, '(type: ' + typeof nfcId + ')');
+
 			const response = await nfcApi.deleteNfcTag(nfcId);
+
+			// DEBUG — log raw server response
+			console.log('[useNfc.deleteNfcTag] raw API response:', JSON.stringify(response, null, 2));
 
 			if (response.success !== false) {
 				nfcStore.removeNfcTag(nfcId);
-				toast.showSuccess('NFC tag removed successfully!');
 				return { success: true };
 			} else {
 				throw new Error(response.message || 'Failed to delete NFC tag');
 			}
 		} catch (error) {
+			// DEBUG — log full error so we can see the server's response body
+			console.error('[useNfc.deleteNfcTag] error:', error?.message);
+			console.error('[useNfc.deleteNfcTag] server response body:', JSON.stringify(error?.response?.data ?? null, null, 2));
 			const errorMessage = error.message || 'Failed to remove NFC tag.';
 			nfcStore.setError(errorMessage);
 			toast.showError(errorMessage);
@@ -238,13 +247,11 @@ export const useNfc = () => {
 		updateNfcCode: updateNfcTag,
 		deleteNfcCode: deleteNfcTag,
 
-		// Legacy state access
-		get nfcCodes() {
-			return nfcStore.state.nfcTags;
-		},
-		get loading() {
-			return nfcStore.state.isLoading;
-		},
+		// Legacy state access — must be computed refs so that replacing
+		// state.nfcTags (setNfcTags) or state.isLoading still triggers
+		// reactivity in every component that destructures these.
+		nfcCodes: computed(() => nfcStore.state.nfcTags),
+		loading: computed(() => nfcStore.state.isLoading),
 	};
 };
 

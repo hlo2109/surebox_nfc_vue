@@ -537,7 +537,7 @@
 			<div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
 				<div
 					v-for="request in paginatedRequests"
-					:key="request.id"
+					:key="request.uuid"
 					class="bg-white rounded-xl border border-gray-200 hover:border-[#0D65AE] hover:shadow-lg transition-all p-5 sm:p-6 cursor-pointer group"
 					@click="handleRequestClick(request)"
 				>
@@ -663,7 +663,7 @@
 						class="flex items-center justify-between pt-4 border-t border-gray-100"
 					>
 						<div class="text-xs text-gray-500">
-							<span>Request #{{ request.id }}</span>
+							<span>Request #{{ request.uuid }}</span>
 						</div>
 						<button
 							@click.stop="handleRequestClick(request)"
@@ -871,7 +871,7 @@ const navigateToCreate = () => {
 };
 
 const handleRequestClick = (request) => {
-	router.push({ name: "RequestDetail", params: { id: request.id } });
+	router.push({ name: "RequestDetail", params: { id: request.uuid } });
 };
 
 const getStatusColor = (status) => {

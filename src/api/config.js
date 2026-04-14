@@ -1,10 +1,8 @@
 import axios from 'axios';
 import { getAccessToken, getRefreshToken, setAccessToken, clearAuth } from '@/utils/storage';
 
-// Base API URL - update this to match your environment
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://mwc84w448w4ccg8c4wwk00kg.vaor.dev/api/v1';
+const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
-// Create axios instance
 const apiClient = axios.create({
 	baseURL: BASE_URL,
 	headers: {
@@ -23,8 +21,8 @@ const apiClient = axios.create({
 				try {
 					return JSON.parse(data);
 				} catch (e) {
-					console.error('Failed to parse response as JSON:', data);
-					console.error('Parse error:', e.message);
+					// console.error('Failed to parse response as JSON:', data);
+					// console.error('Parse error:', e.message);
 					// Return the raw string wrapped in an object
 					return { rawResponse: data, parseError: true };
 				}
@@ -69,13 +67,6 @@ apiClient.interceptors.request.use(
 // Response interceptor - Handle token refresh
 apiClient.interceptors.response.use(
 	(response) => {
-		// Log response for debugging (development only)
-		if (import.meta.env.DEV) {
-			console.log('API Response:', {
-				url: response.config.url,
-				status: response.status,
-			});
-		}
 		return response;
 	},
 	async (error) => {

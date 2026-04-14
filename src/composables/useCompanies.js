@@ -51,48 +51,6 @@ export const useCompanies = () => {
 			companiesStore.setLoading(true);
 			companiesStore.clearError();
 
-			// Get companyId from auth store
-			const authStore = useAuthStore();
-			const companyId = authStore.companyId.value;
-
-			console.log('🔍 fetchMyCompany - Starting with companyId:', companyId);
-
-			// If user has companies in array, use the first one directly
-			const userCompanies = authStore.state.user?.companies || [];
-			console.log('🔍 fetchMyCompany - User companies:', userCompanies);
-
-			if (userCompanies.length > 0 && companyId) {
-				// Try to fetch full company details
-				console.log(`🔍 fetchMyCompany - Attempting to fetch /companies/${companyId}`);
-				try {
-					const response = await companiesApi.getMyCompany(companyId);
-					console.log('✅ fetchMyCompany - API response:', response);
-
-					if (response.success !== false) {
-						const company = response.data || response;
-						companiesStore.setCurrentCompany(company);
-						return { success: true, data: company };
-					}
-				} catch (apiError) {
-					// If API call fails, fallback to using the company data from user object
-					console.error('❌ fetchMyCompany - API call failed:', apiError.message);
-					console.log('⚠️ fetchMyCompany - Using company data from user object as fallback');
-
-					const firstCompany = userCompanies[0];
-					// Transform the company data to include the id
-					const companyData = {
-						...firstCompany,
-						id: firstCompany.company_id || firstCompany.id,
-						name: firstCompany.company_name || firstCompany.name,
-					};
-					console.log('📦 fetchMyCompany - Fallback company data:', companyData);
-					companiesStore.setCurrentCompany(companyData);
-					return { success: true, data: companyData };
-				}
-			}
-
-			// Fallback to /companies/my endpoint
-			console.log('🔍 fetchMyCompany - Attempting to fetch /companies/my');
 			const response = await companiesApi.getMyCompany();
 
 			if (response.success !== false) {
@@ -103,7 +61,6 @@ export const useCompanies = () => {
 				throw new Error(response.message || 'Failed to fetch your company');
 			}
 		} catch (error) {
-			console.error('❌ fetchMyCompany - Final error:', error);
 			const errorMessage = error.message || 'Failed to fetch your company.';
 			companiesStore.setError(errorMessage);
 			toast.showError(errorMessage);
@@ -434,30 +391,7 @@ export const useCompanies = () => {
 	 * @param {object} locationData - Updated location data
 	 * @returns {Promise<object>} Result with updated location
 	 */
-	const updateCompanyLocation = async (companyId, locationId, locationData) => {
-		try {
-			companiesStore.setLoading(true);
-			companiesStore.clearError();
 
-			const response = await companiesApi.updateCompanyLocation(companyId, locationId, locationData);
-
-			if (response.success !== false) {
-				const updatedLocation = response.data || response;
-				companiesStore.updateLocation(companyId, locationId, updatedLocation);
-				toast.showSuccess('Location updated successfully!');
-				return { success: true, data: updatedLocation };
-			} else {
-				throw new Error(response.message || 'Failed to update location');
-			}
-		} catch (error) {
-			const errorMessage = error.message || 'Failed to update location.';
-			companiesStore.setError(errorMessage);
-			toast.showError(errorMessage);
-			return { success: false, error: errorMessage };
-		} finally {
-			companiesStore.setLoading(false);
-		}
-	};
 
 	/**
 	 * Delete a company location
@@ -613,6 +547,252 @@ export const useCompanies = () => {
 		}
 	};
 
+	// ==================== MY COMPANY ====================
+
+	const updateMyCompany = async (companyData) => {
+		try {
+			companiesStore.setLoading(true);
+			companiesStore.clearError();
+			const response = await companiesApi.updateMyCompany(companyData);
+			if (response.success !== false) {
+				const updatedCompany = response.data || response;
+				companiesStore.updateCompany(updatedCompany);
+				toast.showSuccess('Company updated successfully!');
+				return { success: true, data: updatedCompany };
+			} else {
+				throw new Error(response.message || 'Failed to update company');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to update company.';
+			companiesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			companiesStore.setLoading(false);
+		}
+	};
+
+	const fetchMyCompanyMembers = async (params = {}) => {
+		try {
+			companiesStore.setLoading(true);
+			companiesStore.clearError();
+			const response = await companiesApi.getMyCompanyMembers(params);
+			if (response.success !== false) {
+				const members = response.data || response;
+				companiesStore.setCurrentCompanyMembers(members);
+				return { success: true, data: members, pagination: response.pagination };
+			} else {
+				throw new Error(response.message || 'Failed to fetch members');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to fetch company members.';
+			companiesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			companiesStore.setLoading(false);
+		}
+	};
+
+	const addMyCompanyMember = async (memberData) => {
+		try {
+			companiesStore.setLoading(true);
+			companiesStore.clearError();
+			console.log('memberData;', memberData);
+			const response = await companiesApi.addMyCompanyMember(memberData);
+			if (response.success !== false) {
+				const newMember = response.data || response;
+				companiesStore.addCurrentCompanyMember(newMember);
+				toast.showSuccess('Member added successfully!');
+				return { success: true, data: newMember };
+			} else {
+				throw new Error(response.message || 'Failed to add member');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to add member.';
+			companiesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			companiesStore.setLoading(false);
+		}
+	};
+
+	const updateMyCompanyMember = async (userId, memberData) => {
+		try {
+			companiesStore.setLoading(true);
+			companiesStore.clearError();
+			const response = await companiesApi.updateMyCompanyMember(userId, memberData);
+			if (response.success !== false) {
+				const updatedMember = response.data || response;
+				companiesStore.updateCurrentCompanyMember(updatedMember);
+				toast.showSuccess('Member updated successfully!');
+				return { success: true, data: updatedMember };
+			} else {
+				throw new Error(response.message || 'Failed to update member');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to update member.';
+			companiesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			companiesStore.setLoading(false);
+		}
+	};
+
+	const removeMyCompanyMember = async (userId) => {
+		try {
+			companiesStore.setLoading(true);
+			companiesStore.clearError();
+			const response = await companiesApi.removeMyCompanyMember(userId);
+			if (response.success !== false) {
+				companiesStore.removeCurrentCompanyMember(userId);
+				toast.showSuccess('Member removed successfully!');
+				return { success: true };
+			} else {
+				throw new Error(response.message || 'Failed to remove member');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to remove member.';
+			companiesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			companiesStore.setLoading(false);
+		}
+	};
+
+	const fetchMyCompanyInvitations = async () => {
+		try {
+			companiesStore.setLoading(true);
+			companiesStore.clearError();
+			const response = await companiesApi.getMyCompanyInvitations();
+			if (response.success !== false) {
+				const invitations = response.data || response;
+				return { success: true, data: invitations };
+			} else {
+				throw new Error(response.message || 'Failed to fetch invitations');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to fetch company invitations.';
+			companiesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			companiesStore.setLoading(false);
+		}
+	};
+
+	const cancelMyCompanyInvitation = async (invitationId) => {
+		try {
+			companiesStore.setLoading(true);
+			companiesStore.clearError();
+			const response = await companiesApi.cancelMyCompanyInvitation(invitationId);
+			if (response.success !== false) {
+				toast.showSuccess('Invitation cancelled successfully!');
+				return { success: true };
+			} else {
+				throw new Error(response.message || 'Failed to cancel invitation');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to cancel invitation.';
+			companiesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			companiesStore.setLoading(false);
+		}
+	};
+
+	const fetchMyCompanyLocations = async () => {
+		try {
+			companiesStore.setLoading(true);
+			companiesStore.clearError();
+			const response = await companiesApi.getMyCompanyLocations();
+			if (response.success !== false) {
+				const locations = response.data || response;
+				companiesStore.setCurrentCompanyLocations(locations);
+				return { success: true, data: locations };
+			} else {
+				throw new Error(response.message || 'Failed to fetch locations');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to fetch company locations.';
+			companiesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			companiesStore.setLoading(false);
+		}
+	};
+
+	const addMyCompanyLocation = async (locationData) => {
+		try {
+			companiesStore.setLoading(true);
+			companiesStore.clearError();
+			const response = await companiesApi.addMyCompanyLocation(locationData);
+			if (response.success !== false) {
+				const newLocation = response.data || response;
+				companiesStore.addCurrentCompanyLocation(newLocation);
+				toast.showSuccess('Location added successfully!');
+				return { success: true, data: newLocation };
+			} else {
+				throw new Error(response.message || 'Failed to add location');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to add location.';
+			companiesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			companiesStore.setLoading(false);
+		}
+	};
+
+	const fetchMyCompanyServiceRequests = async (params = {}) => {
+		try {
+			companiesStore.setLoading(true);
+			companiesStore.clearError();
+			const response = await companiesApi.getMyCompanyServiceRequests(params);
+			if (response.success !== false) {
+				const requests = response.data || response;
+				return { success: true, data: requests, pagination: response.pagination };
+			} else {
+				throw new Error(response.message || 'Failed to fetch company service requests');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to fetch company service requests.';
+			companiesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			companiesStore.setLoading(false);
+		}
+	};
+
+	const deleteMyCompanyLocation = async (locationId) => {
+		try {
+			companiesStore.setLoading(true);
+			companiesStore.clearError();
+			const response = await companiesApi.deleteMyCompanyLocation(locationId);
+			if (response.success !== false) {
+				companiesStore.removeCurrentCompanyLocation(locationId);
+				toast.showSuccess('Location deleted successfully!');
+				return { success: true };
+			} else {
+				throw new Error(response.message || 'Failed to delete location');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to delete location.';
+			companiesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			companiesStore.setLoading(false);
+		}
+	};
+
 	// ==================== UTILITIES ====================
 
 	/**
@@ -669,7 +849,6 @@ export const useCompanies = () => {
 		// Locations Actions
 		fetchCompanyLocations,
 		addCompanyLocation,
-		updateCompanyLocation,
 		deleteCompanyLocation,
 
 		// Categories Actions
@@ -677,6 +856,19 @@ export const useCompanies = () => {
 		createCompanyCategory,
 		updateCompanyCategory,
 		deleteCompanyCategory,
+
+		// My Company Actions
+		updateMyCompany,
+		fetchMyCompanyMembers,
+		addMyCompanyMember,
+		updateMyCompanyMember,
+		removeMyCompanyMember,
+		fetchMyCompanyInvitations,
+		cancelMyCompanyInvitation,
+		fetchMyCompanyLocations,
+		addMyCompanyLocation,
+		deleteMyCompanyLocation,
+		fetchMyCompanyServiceRequests,
 	};
 };
 

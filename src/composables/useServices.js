@@ -51,12 +51,12 @@ export const useServices = () => {
 	 * @param {number} categoryId - Category ID
 	 * @returns {Promise<object>} Result with category data
 	 */
-	const fetchServiceCategory = async (categoryId) => {
+	const fetchServiceCategory = async (companyId, categoryId) => {
 		try {
 			servicesStore.setLoading(true);
 			servicesStore.clearError();
 
-			const response = await servicesApi.getServiceCategory(categoryId);
+			const response = await servicesApi.getCompanyCategory(companyId, categoryId);
 
 			if (response.success !== false) {
 				const category = response.data || response;
@@ -108,17 +108,49 @@ export const useServices = () => {
 	};
 
 	/**
-	 * Update a service category (admin only)
-	 * @param {number} categoryId - Category ID
-	 * @param {object} categoryData - Updated category data
-	 * @returns {Promise<object>} Result with updated category
+	 * Create a new category for a specific company
+	 * @param {number} companyId - Company ID
+	 * @param {object} categoryData - Category data
+	 * @returns {Promise<object>} Result with created category
 	 */
-	const updateServiceCategory = async (categoryId, categoryData) => {
+	const createCompanyCategory = async (companyId, categoryData) => {
 		try {
 			servicesStore.setLoading(true);
 			servicesStore.clearError();
 
-			const response = await servicesApi.updateServiceCategory(categoryId, categoryData);
+			const response = await servicesApi.createCompanyCategory(companyId, categoryData);
+
+			if (response.success !== false) {
+				const newCategory = response.data || response;
+				servicesStore.addCategory(newCategory);
+				toast.showSuccess('Category created successfully!');
+				return { success: true, data: newCategory };
+			} else {
+				throw new Error(response.message || 'Failed to create category');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to create category.';
+			servicesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			servicesStore.setLoading(false);
+		}
+	};
+
+	/**
+	 * Update a company category
+	 * @param {number} companyId - Company ID
+	 * @param {number} categoryId - Category ID
+	 * @param {object} categoryData - Updated category data
+	 * @returns {Promise<object>} Result with updated category
+	 */
+	const updateServiceCategory = async (companyId, categoryId, categoryData) => {
+		try {
+			servicesStore.setLoading(true);
+			servicesStore.clearError();
+
+			const response = await servicesApi.updateCompanyCategory(companyId, categoryId, categoryData);
 
 			if (response.success !== false) {
 				const updatedCategory = response.data || response;
@@ -143,12 +175,12 @@ export const useServices = () => {
 	 * @param {number} categoryId - Category ID
 	 * @returns {Promise<object>} Result
 	 */
-	const deleteServiceCategory = async (categoryId) => {
+	const deleteServiceCategory = async (companyId, categoryId) => {
 		try {
 			servicesStore.setLoading(true);
 			servicesStore.clearError();
 
-			const response = await servicesApi.deleteServiceCategory(categoryId);
+			const response = await servicesApi.deleteCompanyCategory(companyId, categoryId);
 
 			if (response.success !== false) {
 				servicesStore.removeCategory(categoryId);
@@ -211,18 +243,25 @@ export const useServices = () => {
 	 */
 	const fetchMyCompanyServices = async (params = {}) => {
 		try {
-			const companyId = authStore.companyId.value;
+			servicesStore.setLoading(true);
+			servicesStore.clearError();
 
-			if (!companyId) {
-				throw new Error('No company associated with your account');
+			const response = await servicesApi.getMyCompanyServices(params);
+
+			if (response.success !== false) {
+				const services = response.data || response;
+				servicesStore.setServices(services);
+				return { success: true, data: services, pagination: response.pagination };
+			} else {
+				throw new Error(response.message || 'Failed to fetch your company services');
 			}
-
-			return await fetchCompanyServices(companyId, params);
 		} catch (error) {
 			const errorMessage = error.message || 'Failed to fetch your company services.';
 			servicesStore.setError(errorMessage);
 			toast.showError(errorMessage);
 			return { success: false, error: errorMessage };
+		} finally {
+			servicesStore.setLoading(false);
 		}
 	};
 
@@ -269,12 +308,12 @@ export const useServices = () => {
 	 * @param {number} serviceId - Service ID
 	 * @returns {Promise<object>} Result with service data
 	 */
-	const fetchCompanyService = async (companyId, serviceId) => {
+	const fetchCompanyService = async (serviceId) => {
 		try {
 			servicesStore.setLoading(true);
 			servicesStore.clearError();
 
-			const response = await servicesApi.getCompanyService(companyId, serviceId);
+			const response = await servicesApi.getService(serviceId);
 
 			if (response.success !== false) {
 				const service = response.data || response;
@@ -300,12 +339,12 @@ export const useServices = () => {
 	 * @param {object} serviceData - Updated service data
 	 * @returns {Promise<object>} Result with updated service
 	 */
-	const updateCompanyService = async (companyId, serviceId, serviceData) => {
+	const updateCompanyService = async (serviceId, serviceData) => {
 		try {
 			servicesStore.setLoading(true);
 			servicesStore.clearError();
 
-			const response = await servicesApi.updateCompanyService(companyId, serviceId, serviceData);
+			const response = await servicesApi.updateService(serviceId, serviceData);
 
 			if (response.success !== false) {
 				const updatedService = response.data || response;
@@ -331,12 +370,12 @@ export const useServices = () => {
 	 * @param {number} serviceId - Service ID
 	 * @returns {Promise<object>} Result
 	 */
-	const deleteCompanyService = async (companyId, serviceId) => {
+	const deleteCompanyService = async (serviceId) => {
 		try {
 			servicesStore.setLoading(true);
 			servicesStore.clearError();
 
-			const response = await servicesApi.deleteCompanyService(companyId, serviceId);
+			const response = await servicesApi.deleteService(serviceId);
 
 			if (response.success !== false) {
 				servicesStore.removeService(serviceId);
@@ -365,7 +404,7 @@ export const useServices = () => {
 			servicesStore.setLoading(true);
 			servicesStore.clearError();
 
-			const response = await servicesApi.getCompanyServiceStats(companyId);
+			throw new Error('Service statistics endpoint has been removed from the API');
 
 			if (response.success !== false) {
 				const stats = response.data || response;
@@ -389,12 +428,25 @@ export const useServices = () => {
 	 * @param {object} params - Query parameters
 	 * @returns {Promise<object>} Result with services
 	 */
+	/**
+	 * Browse all services across all companies (customer-facing catalogue).
+	 * Maps to GET /services.
+	 * @param {object} [params] - Query parameters
+	 * @param {number} [params.page] - Page number (default 1)
+	 * @param {number} [params.limit] - Items per page (default 20)
+	 * @param {string} [params.companyId] - Filter by company UUID
+	 * @param {number} [params.categoryId] - Filter by service category ID
+	 * @param {string} [params.search] - Search by service name
+	 * @param {string} [params.priceType] - 'fixed' | 'hourly' | 'per_unit'
+	 * @param {number} [params.cityId] - Filter by city ID
+	 * @returns {Promise<{success: boolean, data?: array, pagination?: object, error?: string}>}
+	 */
 	const fetchServices = async (params = {}) => {
 		try {
 			servicesStore.setLoading(true);
 			servicesStore.clearError();
 
-			const response = await servicesApi.getServices(params);
+			const response = await servicesApi.browseServices(params);
 
 			if (response.success !== false) {
 				const services = response.data || response;
@@ -502,6 +554,159 @@ export const useServices = () => {
 		}
 	};
 
+	// ==================== MY COMPANY – CATEGORIES ====================
+
+	/**
+	 * Fetch service categories for the authenticated user's company
+	 * @param {object} params - Query parameters
+	 * @returns {Promise<object>} Result with categories
+	 */
+	const fetchMyCompanyCategories = async (params = {}) => {
+		try {
+			servicesStore.setLoading(true);
+			servicesStore.clearError();
+
+			const response = await servicesApi.getMyCompanyCategories(params);
+
+			if (response.success !== false) {
+				const categories = response.data || response;
+				servicesStore.setCategories(categories);
+				return { success: true, data: categories };
+			} else {
+				throw new Error(response.message || 'Failed to fetch categories');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to fetch company categories.';
+			servicesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			servicesStore.setLoading(false);
+		}
+	};
+
+	/**
+	 * Create a service category for the authenticated user's company
+	 * @param {object} categoryData
+	 * @returns {Promise<object>} Result with created category
+	 */
+	const createMyCompanyCategory = async (categoryData) => {
+		try {
+			servicesStore.setLoading(true);
+			servicesStore.clearError();
+
+			const response = await servicesApi.createMyCompanyCategory(categoryData);
+
+			if (response.success !== false) {
+				const newCategory = response.data || response;
+				servicesStore.addCategory(newCategory);
+				toast.showSuccess('Category created successfully!');
+				return { success: true, data: newCategory };
+			} else {
+				throw new Error(response.message || 'Failed to create category');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to create category.';
+			servicesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			servicesStore.setLoading(false);
+		}
+	};
+
+	/**
+	 * Update a service category in the authenticated user's company
+	 * @param {string} categoryId - Category UUID
+	 * @param {object} categoryData
+	 * @returns {Promise<object>} Result with updated category
+	 */
+	const updateMyCompanyCategory = async (categoryId, categoryData) => {
+		try {
+			servicesStore.setLoading(true);
+			servicesStore.clearError();
+
+			const response = await servicesApi.updateMyCompanyCategory(categoryId, categoryData);
+
+			if (response.success !== false) {
+				const updatedCategory = response.data || response;
+				servicesStore.updateCategory(updatedCategory);
+				toast.showSuccess('Category updated successfully!');
+				return { success: true, data: updatedCategory };
+			} else {
+				throw new Error(response.message || 'Failed to update category');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to update category.';
+			servicesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			servicesStore.setLoading(false);
+		}
+	};
+
+	/**
+	 * Delete a service category from the authenticated user's company
+	 * @param {string} categoryId - Category UUID
+	 * @returns {Promise<object>} Result
+	 */
+	const deleteMyCompanyCategory = async (categoryId) => {
+		try {
+			servicesStore.setLoading(true);
+			servicesStore.clearError();
+
+			const response = await servicesApi.deleteMyCompanyCategory(categoryId);
+
+			if (response.success !== false) {
+				servicesStore.removeCategory(categoryId);
+				toast.showSuccess('Category deleted successfully!');
+				return { success: true };
+			} else {
+				throw new Error(response.message || 'Failed to delete category');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to delete category.';
+			servicesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			servicesStore.setLoading(false);
+		}
+	};
+
+	// ==================== MY COMPANY – SERVICES ====================
+
+	/**
+	 * Create a service for the authenticated user's company
+	 * @param {object} serviceData
+	 * @returns {Promise<object>} Result with created service
+	 */
+	const createMyCompanyService = async (serviceData) => {
+		try {
+			servicesStore.setLoading(true);
+			servicesStore.clearError();
+
+			const response = await servicesApi.createMyCompanyService(serviceData);
+
+			if (response.success !== false) {
+				const newService = response.data || response;
+				servicesStore.addService(newService);
+				toast.showSuccess('Service created successfully!');
+				return { success: true, data: newService };
+			} else {
+				throw new Error(response.message || 'Failed to create service');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to create service.';
+			servicesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			servicesStore.setLoading(false);
+		}
+	};
+
 	/**
 	 * Fetch popular services
 	 * @param {object} params - Query parameters
@@ -512,7 +717,7 @@ export const useServices = () => {
 			servicesStore.setLoading(true);
 			servicesStore.clearError();
 
-			const response = await servicesApi.getPopularServices(params);
+			throw new Error('Popular services endpoint has been removed from the API');
 
 			if (response.success !== false) {
 				const services = response.data || response;
@@ -594,14 +799,20 @@ export const useServices = () => {
 		fetchServiceCategories,
 		fetchServiceCategory,
 		createServiceCategory,
+		createCompanyCategory,
 		updateServiceCategory,
 		deleteServiceCategory,
+		fetchMyCompanyCategories,
+		createMyCompanyCategory,
+		updateMyCompanyCategory,
+		deleteMyCompanyCategory,
 		getCategoryById,
 
 		// Company Services Actions
 		fetchCompanyServices,
 		fetchMyCompanyServices,
 		createCompanyService,
+		createMyCompanyService,
 		fetchCompanyService,
 		updateCompanyService,
 		deleteCompanyService,

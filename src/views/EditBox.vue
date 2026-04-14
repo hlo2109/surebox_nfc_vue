@@ -662,7 +662,10 @@ import PhoneInput from "@/components/PhoneInput.vue";
 const router = useRouter();
 const route = useRoute();
 const boxId = route.params.id;
-const { fetchNfcCode, updateNfcCode, loading: submitting } = useNfc();
+const { fetchNfcCodes, updateNfcCode, getNfcById, getNfcByCode } = useNfc();
+const submitting = ref(false);
+// Resolved from the loaded NFC object — may differ from the route param.
+const nfcRecordId = ref(null);
 const { showToast } = useToast();
 const { canEditNfc, canViewNfc } = usePermissions();
 
@@ -899,6 +902,9 @@ function removeImage(index) {
 async function handleSubmit(e) {
 	e.preventDefault();
 
+	// Guard against double submission
+	if (submitting.value) return;
+
 	// Validation
 	if (!codebox_id.value.trim()) {
 		showToast("warn", "Validation Error", "Box ID is required");
@@ -926,17 +932,24 @@ async function handleSubmit(e) {
 		description: description.value || undefined,
 	};
 
-	const success = await updateNfcCode(boxId, payload);
+	submitting.value = true;
+	try {
+		// Use the identifier resolved from the loaded object (uuid or id),
+		// falling back to the raw route param as a last resort.
+		const result = await updateNfcCode(nfcRecordId.value || boxId, payload);
 
-	if (success) {
-		showToast(
-			"success",
-			"Box Updated",
-			"Box information has been updated successfully",
-		);
-		setTimeout(() => {
-			router.push("/mybox");
-		}, 1500);
+		if (result?.success) {
+			showToast(
+				"success",
+				"Box Updated",
+				"Box information has been updated successfully",
+			);
+			setTimeout(() => {
+				router.push("/mybox");
+			}, 1500);
+		}
+	} finally {
+		submitting.value = false;
 	}
 }
 
@@ -978,8 +991,20 @@ onMounted(async () => {
 	}
 
 	if (boxId) {
-		const nfc = await fetchNfcCode(boxId);
+		// 1. Try the store first — already populated when coming from MyBox.
+		let nfc = getNfcById(boxId) || getNfcByCode(boxId);
+
+		// 2. Store empty (e.g. hard reload) — load the full list then retry.
+		//    This avoids relying on GET /nfc/:id which may not exist.
+		if (!nfc) {
+			await fetchNfcCodes();
+			nfc = getNfcById(boxId) || getNfcByCode(boxId);
+		}
+
 		if (nfc) {
+			// Resolve the real identifier (uuid → id → code) for the update call.
+			nfcRecordId.value = nfc.uuid || nfc.id || nfc.code || boxId;
+
 			// Populate form fields
 			codebox_id.value = nfc.code || "";
 			phone.value = nfc.name || "";

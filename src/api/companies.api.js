@@ -2,35 +2,26 @@ import apiClient, { handleApiError } from './config';
 
 /**
  * Companies API Module
- * Handles all company-related API calls
+ * Organized into two sections:
+ *  - Admin routes  → /admin/companies/*  (require `admin` permission)
+ *  - My Company    → /my/company/*       (company member, ID resolved from JWT)
  */
 
-/**
- * Get the current user's company
- * @returns {Promise<object>} Response with user's company data
- */
-export const getMyCompany = async (companyId = null) => {
-	try {
-		// If companyId is provided, get that specific company
-		// Otherwise, use the /companies/my endpoint
-		const endpoint = companyId ? `/companies/${companyId}` : '/companies/my';
-		const response = await apiClient.get(endpoint);
-		return response.data;
-	} catch (error) {
-		throw new Error(handleApiError(error));
-	}
-};
+// ─────────────────────────────────────────────
+// ADMIN – Companies
+// ─────────────────────────────────────────────
 
 /**
- * Get all companies (paginated)
- * @param {object} params - Query parameters
- * @param {number} params.page - Page number (default: 1)
- * @param {number} params.limit - Items per page (default: 10)
- * @returns {Promise<object>} Response with companies array and pagination
+ * List all companies (paginated, searchable)
+ * @param {object} params
+ * @param {number} [params.page=1]
+ * @param {number} [params.limit=20]
+ * @param {string} [params.search]
+ * @returns {Promise<object>} { success, data: Company[], pagination }
  */
 export const getCompanies = async (params = {}) => {
 	try {
-		const response = await apiClient.get('/companies', { params });
+		const response = await apiClient.get('/admin/companies', { params });
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -38,13 +29,13 @@ export const getCompanies = async (params = {}) => {
 };
 
 /**
- * Get a specific company by ID
- * @param {number} companyId - Company ID
- * @returns {Promise<object>} Response with company data
+ * Get full details for a single company
+ * @param {string} companyId - Company UUID
+ * @returns {Promise<object>} { success, data: CompanyDetail }
  */
 export const getCompany = async (companyId) => {
 	try {
-		const response = await apiClient.get(`/companies/${companyId}`);
+		const response = await apiClient.get(`/admin/companies/${companyId}`);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -53,18 +44,20 @@ export const getCompany = async (companyId) => {
 
 /**
  * Create a new company
- * @param {object} companyData - Company data
- * @param {string} companyData.name - Company name (required)
- * @param {string} companyData.email - Company email (required)
- * @param {string} companyData.phone - Company phone (required)
- * @param {string} companyData.address - Company address (optional)
- * @param {string} companyData.city - City (optional)
- * @param {string} companyData.country - Country (optional)
- * @returns {Promise<object>} Response with created company
+ * @param {object} companyData
+ * @param {string} companyData.name - Required
+ * @param {string} [companyData.email]
+ * @param {string} [companyData.phone]
+ * @param {string} [companyData.address]
+ * @param {string} [companyData.city]
+ * @param {string} [companyData.country]
+ * @param {string} [companyData.description]
+ * @param {string} [companyData.logo]
+ * @returns {Promise<object>} { success, data: Company }
  */
 export const createCompany = async (companyData) => {
 	try {
-		const response = await apiClient.post('/companies', companyData);
+		const response = await apiClient.post('/admin/companies', companyData);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -72,18 +65,14 @@ export const createCompany = async (companyData) => {
 };
 
 /**
- * Update an existing company
- * @param {number} companyId - Company ID
- * @param {object} companyData - Updated company data
- * @param {string} companyData.name - Company name (optional)
- * @param {string} companyData.email - Company email (optional)
- * @param {string} companyData.phone - Company phone (optional)
- * @param {string} companyData.address - Company address (optional)
- * @returns {Promise<object>} Response with updated company
+ * Update a company
+ * @param {string} companyId - Company UUID
+ * @param {object} companyData - Fields to update
+ * @returns {Promise<object>}
  */
 export const updateCompany = async (companyId, companyData) => {
 	try {
-		const response = await apiClient.put(`/companies/${companyId}`, companyData);
+		const response = await apiClient.put(`/admin/companies/${companyId}`, companyData);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -91,31 +80,35 @@ export const updateCompany = async (companyId, companyData) => {
 };
 
 /**
- * Delete a company (admin only)
- * @param {number} companyId - Company ID
- * @returns {Promise<object>} Response
+ * Permanently delete a company and all related data
+ * @param {string} companyId - Company UUID
+ * @returns {Promise<object>}
  */
 export const deleteCompany = async (companyId) => {
 	try {
-		const response = await apiClient.delete(`/companies/${companyId}`);
+		const response = await apiClient.delete(`/admin/companies/${companyId}`);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
 	}
 };
 
+// ─────────────────────────────────────────────
+// ADMIN – Company Members
+// ─────────────────────────────────────────────
+
 /**
- * Get company members (paginated)
- * @param {number} companyId - Company ID
- * @param {object} params - Query parameters
- * @param {number} params.page - Page number (default: 1)
- * @param {number} params.limit - Items per page (default: 20)
- * @param {string} params.status - Filter by status: 'active' or 'inactive' (optional)
- * @returns {Promise<object>} Response with members array and pagination
+ * List members of a company (paginated)
+ * @param {string} companyId - Company UUID
+ * @param {object} [params]
+ * @param {number} [params.page=1]
+ * @param {number} [params.limit=20]
+ * @param {string} [params.status] - 'active' | 'inactive'
+ * @returns {Promise<object>} { success, data: CompanyMember[], pagination }
  */
 export const getCompanyMembers = async (companyId, params = {}) => {
 	try {
-		const response = await apiClient.get(`/companies/${companyId}/members`, { params });
+		const response = await apiClient.get(`/admin/companies/${companyId}/members`, { params });
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -123,16 +116,29 @@ export const getCompanyMembers = async (companyId, params = {}) => {
 };
 
 /**
- * Add a member to a company
- * @param {number} companyId - Company ID
- * @param {object} memberData - Member data
- * @param {string} memberData.userId - User ID to add (required)
- * @param {string} memberData.role - Member role (optional)
- * @returns {Promise<object>} Response
+ * Add or invite a member to a company.
+ *
+ * INVITATION MODE – supply only `email` (+ optional `roleInCompany`).
+ *   • Existing user  → added directly.
+ *   • Unknown email  → invitation email sent.
+ *
+ * FULL INFO MODE – supply `email` AND `name`.
+ *   • Existing user  → added directly.
+ *   • Unknown email  → new account created, welcome email sent.
+ *
+ * @param {string} companyId - Company UUID
+ * @param {object} memberData
+ * @param {string}  memberData.email          - Required
+ * @param {string}  [memberData.name]         - Activates FULL INFO MODE
+ * @param {string}  [memberData.phone]
+ * @param {string}  [memberData.roleInCompany] - 'admin' | 'employee' (default: 'employee')
+ * @param {number}  [memberData.hourlyRate]
+ * @param {number}  [memberData.monthlyRate]
+ * @returns {Promise<object>}
  */
 export const addCompanyMember = async (companyId, memberData) => {
 	try {
-		const response = await apiClient.post(`/companies/${companyId}/members`, memberData);
+		const response = await apiClient.post(`/admin/companies/${companyId}/members`, memberData);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -140,16 +146,19 @@ export const addCompanyMember = async (companyId, memberData) => {
 };
 
 /**
- * Update a company member
- * @param {number} companyId - Company ID
- * @param {number} userId - User ID
- * @param {object} memberData - Updated member data
- * @param {string} memberData.role - Member role (optional)
- * @returns {Promise<object>} Response
+ * Update a company member's role, rates or status
+ * @param {string} companyId - Company UUID
+ * @param {string} userId    - User UUID
+ * @param {object} memberData
+ * @param {string}  [memberData.roleInCompany] - 'admin' | 'employee'
+ * @param {number}  [memberData.hourlyRate]
+ * @param {number}  [memberData.monthlyRate]
+ * @param {string}  [memberData.status]        - 'active' | 'inactive'
+ * @returns {Promise<object>}
  */
 export const updateCompanyMember = async (companyId, userId, memberData) => {
 	try {
-		const response = await apiClient.put(`/companies/${companyId}/members/${userId}`, memberData);
+		const response = await apiClient.put(`/admin/companies/${companyId}/members/${userId}`, memberData);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -158,13 +167,31 @@ export const updateCompanyMember = async (companyId, userId, memberData) => {
 
 /**
  * Remove a member from a company
- * @param {number} companyId - Company ID
- * @param {number} userId - User ID
- * @returns {Promise<object>} Response
+ * @param {string} companyId - Company UUID
+ * @param {string} userId    - User UUID
+ * @returns {Promise<object>}
  */
 export const removeCompanyMember = async (companyId, userId) => {
 	try {
-		const response = await apiClient.delete(`/companies/${companyId}/members/${userId}`);
+		const response = await apiClient.delete(`/admin/companies/${companyId}/members/${userId}`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+// ─────────────────────────────────────────────
+// ADMIN – Company Invitations
+// ─────────────────────────────────────────────
+
+/**
+ * List pending invitations for a company
+ * @param {string} companyId - Company UUID
+ * @returns {Promise<object>} { success, data: Invitation[] }
+ */
+export const getCompanyInvitations = async (companyId) => {
+	try {
+		const response = await apiClient.get(`/admin/companies/${companyId}/invitations`);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -172,35 +199,32 @@ export const removeCompanyMember = async (companyId, userId) => {
 };
 
 /**
- * Get company locations
- * @param {number} companyId - Company ID
- * @returns {Promise<object>} Response with locations array
+ * Cancel a pending invitation
+ * @param {string} companyId    - Company UUID
+ * @param {number} invitationId - Invitation ID
+ * @returns {Promise<object>}
+ */
+export const cancelCompanyInvitation = async (companyId, invitationId) => {
+	try {
+		const response = await apiClient.delete(`/admin/companies/${companyId}/invitations/${invitationId}`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+// ─────────────────────────────────────────────
+// ADMIN – Company Locations
+// ─────────────────────────────────────────────
+
+/**
+ * List all locations for a company
+ * @param {string} companyId - Company UUID
+ * @returns {Promise<object>} { success, data: Location[] }
  */
 export const getCompanyLocations = async (companyId) => {
 	try {
-		const response = await apiClient.get(`/companies/${companyId}/locations`);
-		return response.data;
-	} catch (error) {
-		throw new Error(handleApiError(error));
-	}
-};
-
-/**
- * Update a company location
- * @param {number} companyId - Company ID
- * @param {number} locationId - Location ID
- * @param {object} locationData - Updated location data
- * @param {string} locationData.name - Location name (optional)
- * @param {string} locationData.address - Address (optional)
- * @param {number} locationData.cityId - City ID from cities table (optional)
- * @param {string} locationData.phone - Phone number (optional)
- * @param {number} locationData.lat - Latitude (optional)
- * @param {number} locationData.lng - Longitude (optional)
- * @returns {Promise<object>} Response with updated location
- */
-export const updateCompanyLocation = async (companyId, locationId, locationData) => {
-	try {
-		const response = await apiClient.put(`/companies/${companyId}/locations/${locationId}`, locationData);
+		const response = await apiClient.get(`/admin/companies/${companyId}/locations`);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -209,19 +233,19 @@ export const updateCompanyLocation = async (companyId, locationId, locationData)
 
 /**
  * Add a location to a company
- * @param {number} companyId - Company ID
- * @param {object} locationData - Location data
- * @param {string} locationData.name - Location name (required)
- * @param {string} locationData.address - Address (required)
- * @param {number} locationData.cityId - City ID from cities table (optional)
- * @param {string} locationData.phone - Phone number (optional)
- * @param {number} locationData.lat - Latitude (optional)
- * @param {number} locationData.lng - Longitude (optional)
- * @returns {Promise<object>} Response with created location
+ * @param {string} companyId - Company UUID
+ * @param {object} locationData
+ * @param {string}  locationData.name    - Required
+ * @param {string}  locationData.address - Required
+ * @param {number}  [locationData.cityId]
+ * @param {string}  [locationData.phone]
+ * @param {number}  [locationData.lat]
+ * @param {number}  [locationData.lng]
+ * @returns {Promise<object>}
  */
 export const addCompanyLocation = async (companyId, locationData) => {
 	try {
-		const response = await apiClient.post(`/companies/${companyId}/locations`, locationData);
+		const response = await apiClient.post(`/admin/companies/${companyId}/locations`, locationData);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -229,28 +253,32 @@ export const addCompanyLocation = async (companyId, locationData) => {
 };
 
 /**
- * Delete a company location
- * @param {number} companyId - Company ID
- * @param {number} locationId - Location ID
- * @returns {Promise<object>} Response
+ * Delete a location from a company
+ * @param {string} companyId  - Company UUID
+ * @param {string} locationId - Location UUID
+ * @returns {Promise<object>}
  */
 export const deleteCompanyLocation = async (companyId, locationId) => {
 	try {
-		const response = await apiClient.delete(`/companies/${companyId}/locations/${locationId}`);
+		const response = await apiClient.delete(`/admin/companies/${companyId}/locations/${locationId}`);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
 	}
 };
 
+// ─────────────────────────────────────────────
+// ADMIN – Company Categories
+// ─────────────────────────────────────────────
+
 /**
- * Get company categories
- * @param {number} companyId - Company ID
- * @returns {Promise<object>} Response with categories array
+ * List service categories for a company
+ * @param {string} companyId - Company UUID
+ * @returns {Promise<object>} { success, data: ServiceCategory[] }
  */
 export const getCompanyCategories = async (companyId) => {
 	try {
-		const response = await apiClient.get(`/companies/${companyId}/categories`);
+		const response = await apiClient.get(`/admin/companies/${companyId}/categories`);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -258,14 +286,14 @@ export const getCompanyCategories = async (companyId) => {
 };
 
 /**
- * Get a specific company category
- * @param {number} companyId - Company ID
- * @param {number} categoryId - Category ID
- * @returns {Promise<object>} Response with category data
+ * Get a specific category of a company
+ * @param {string} companyId  - Company UUID
+ * @param {string} categoryId - Category UUID
+ * @returns {Promise<object>}
  */
 export const getCompanyCategory = async (companyId, categoryId) => {
 	try {
-		const response = await apiClient.get(`/companies/${companyId}/categories/${categoryId}`);
+		const response = await apiClient.get(`/admin/companies/${companyId}/categories/${categoryId}`);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -273,16 +301,16 @@ export const getCompanyCategory = async (companyId, categoryId) => {
 };
 
 /**
- * Create a category in a company
- * @param {number} companyId - Company ID
- * @param {object} categoryData - Category data
- * @param {string} categoryData.name - Category name (required)
- * @param {string} categoryData.description - Category description (optional)
- * @returns {Promise<object>} Response with created category
+ * Create a service category for a company
+ * @param {string} companyId - Company UUID
+ * @param {object} categoryData
+ * @param {string}  categoryData.name        - Required
+ * @param {string}  [categoryData.description]
+ * @returns {Promise<object>}
  */
 export const createCompanyCategory = async (companyId, categoryData) => {
 	try {
-		const response = await apiClient.post(`/companies/${companyId}/categories`, categoryData);
+		const response = await apiClient.post(`/admin/companies/${companyId}/categories`, categoryData);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -290,17 +318,17 @@ export const createCompanyCategory = async (companyId, categoryData) => {
 };
 
 /**
- * Update a company category
- * @param {number} companyId - Company ID
- * @param {number} categoryId - Category ID
- * @param {object} categoryData - Updated category data
- * @param {string} categoryData.name - Category name (required)
- * @param {string} categoryData.description - Category description (optional)
- * @returns {Promise<object>} Response with updated category
+ * Update a company service category
+ * @param {string} companyId  - Company UUID
+ * @param {string} categoryId - Category UUID
+ * @param {object} categoryData
+ * @param {string}  categoryData.name        - Required
+ * @param {string}  [categoryData.description]
+ * @returns {Promise<object>}
  */
 export const updateCompanyCategory = async (companyId, categoryId, categoryData) => {
 	try {
-		const response = await apiClient.put(`/companies/${companyId}/categories/${categoryId}`, categoryData);
+		const response = await apiClient.put(`/admin/companies/${companyId}/categories/${categoryId}`, categoryData);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -308,14 +336,598 @@ export const updateCompanyCategory = async (companyId, categoryId, categoryData)
 };
 
 /**
- * Delete a company category
- * @param {number} companyId - Company ID
- * @param {number} categoryId - Category ID
- * @returns {Promise<object>} Response
+ * Delete a company service category
+ * @param {string} companyId  - Company UUID
+ * @param {string} categoryId - Category UUID
+ * @returns {Promise<object>}
  */
 export const deleteCompanyCategory = async (companyId, categoryId) => {
 	try {
-		const response = await apiClient.delete(`/companies/${companyId}/categories/${categoryId}`);
+		const response = await apiClient.delete(`/admin/companies/${companyId}/categories/${categoryId}`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+// ─────────────────────────────────────────────
+// ADMIN – Company Services
+// ─────────────────────────────────────────────
+
+/**
+ * List services for a company (paginated)
+ * @param {string} companyId - Company UUID
+ * @param {object} [params]
+ * @param {number} [params.page=1]
+ * @param {number} [params.limit=20]
+ * @param {number} [params.categoryId]
+ * @param {string} [params.priceType] - 'fixed' | 'hourly' | 'per_unit'
+ * @returns {Promise<object>}
+ */
+export const getCompanyServices = async (companyId, params = {}) => {
+	try {
+		const response = await apiClient.get(`/admin/companies/${companyId}/services`, { params });
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Create a service for a company
+ * @param {string} companyId - Company UUID
+ * @param {object} serviceData
+ * @param {string}  serviceData.name       - Required
+ * @param {number}  serviceData.categoryId - Required
+ * @param {number}  serviceData.basePrice  - Required
+ * @param {string}  serviceData.priceType  - Required: 'fixed' | 'hourly' | 'per_unit'
+ * @param {string}  [serviceData.description]
+ * @param {number}  [serviceData.duration] - Minutes
+ * @returns {Promise<object>}
+ */
+export const createCompanyService = async (companyId, serviceData) => {
+	try {
+		const response = await apiClient.post(`/admin/companies/${companyId}/services`, serviceData);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+// ─────────────────────────────────────────────
+// ADMIN – Company Service Requests
+// ─────────────────────────────────────────────
+
+/**
+ * List service requests for a company (paginated)
+ * @param {string} companyId - Company UUID
+ * @param {object} [params]
+ * @param {number} [params.page=1]
+ * @param {number} [params.limit=20]
+ * @param {string} [params.status]
+ * @returns {Promise<object>}
+ */
+export const getCompanyServiceRequests = async (companyId, params = {}) => {
+	try {
+		const response = await apiClient.get(`/admin/companies/${companyId}/service-requests`, { params });
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Assign an employee to a company service request
+ * @param {string} companyId  - Company UUID
+ * @param {string} requestId  - Service request UUID
+ * @param {number} employeeId - Employee user ID
+ * @returns {Promise<object>}
+ */
+export const assignEmployeeToCompanyRequest = async (companyId, requestId, employeeId) => {
+	try {
+		const response = await apiClient.post(
+			`/admin/companies/${companyId}/service-requests/${requestId}/assign`,
+			{ employeeId }
+		);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Create a quote for a company service request
+ * @param {string} companyId  - Company UUID
+ * @param {string} requestId  - Service request UUID
+ * @param {object} quoteData
+ * @param {number}  quoteData.totalPrice - Required
+ * @param {object}  [quoteData.details]
+ * @returns {Promise<object>}
+ */
+export const createCompanyQuote = async (companyId, requestId, quoteData) => {
+	try {
+		const response = await apiClient.post(
+			`/admin/companies/${companyId}/service-requests/${requestId}/quotes`,
+			quoteData
+		);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Update a quote status for a company service request
+ * @param {string} companyId - Company UUID
+ * @param {string} quoteId   - Quote UUID
+ * @param {string} status    - 'pending' | 'accepted' | 'rejected'
+ * @returns {Promise<object>}
+ */
+export const updateCompanyQuoteStatus = async (companyId, quoteId, status) => {
+	try {
+		const response = await apiClient.put(
+			`/admin/companies/${companyId}/service-requests/quotes/${quoteId}/status`,
+			{ status }
+		);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+// ─────────────────────────────────────────────
+// MY COMPANY – Profile
+// ─────────────────────────────────────────────
+
+/**
+ * Get the authenticated user's company details
+ * (company ID resolved automatically from JWT)
+ * @returns {Promise<object>} { success, data: CompanyDetail }
+ */
+export const getMyCompany = async () => {
+	try {
+		const response = await apiClient.get('/my/company');
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Update the authenticated user's company profile
+ * Requires `manage_company` permission.
+ * @param {object} companyData - Fields to update
+ * @returns {Promise<object>}
+ */
+export const updateMyCompany = async (companyData) => {
+	try {
+		const response = await apiClient.put('/my/company', companyData);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+// ─────────────────────────────────────────────
+// MY COMPANY – Members
+// ─────────────────────────────────────────────
+
+/**
+ * List members of the authenticated user's company (paginated)
+ * @param {object} [params]
+ * @param {number} [params.page=1]
+ * @param {number} [params.limit=20]
+ * @param {string} [params.status] - 'active' | 'inactive'
+ * @returns {Promise<object>}
+ */
+export const getMyCompanyMembers = async (params = {}) => {
+	try {
+		const response = await apiClient.get('/my/company/members', { params });
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Add or invite a member to the authenticated user's company.
+ * Same dual-mode logic as addCompanyMember (admin version).
+ * Requires `manage_company` permission.
+ * @param {object} memberData
+ * @param {string}  memberData.email
+ * @param {string}  [memberData.name]
+ * @param {string}  [memberData.phone]
+ * @param {string}  [memberData.roleInCompany]
+ * @param {number}  [memberData.hourlyRate]
+ * @param {number}  [memberData.monthlyRate]
+ * @returns {Promise<object>}
+ */
+export const addMyCompanyMember = async (memberData) => {
+	try {
+		const response = await apiClient.post('/my/company/members', memberData);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Update a member in the authenticated user's company
+ * Requires `manage_company` permission.
+ * @param {string} userId    - User UUID
+ * @param {object} memberData
+ * @returns {Promise<object>}
+ */
+export const updateMyCompanyMember = async (userId, memberData) => {
+	try {
+		const response = await apiClient.put(`/my/company/members/${userId}`, memberData);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Remove a member from the authenticated user's company
+ * Requires `manage_company` permission.
+ * @param {string} userId - User UUID
+ * @returns {Promise<object>}
+ */
+export const removeMyCompanyMember = async (userId) => {
+	try {
+		const response = await apiClient.delete(`/my/company/members/${userId}`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+// ─────────────────────────────────────────────
+// MY COMPANY – Invitations
+// ─────────────────────────────────────────────
+
+/**
+ * List pending invitations for the authenticated user's company
+ * @returns {Promise<object>} { success, data: Invitation[] }
+ */
+export const getMyCompanyInvitations = async () => {
+	try {
+		const response = await apiClient.get('/my/company/invitations');
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Cancel a pending invitation for the authenticated user's company
+ * Requires `manage_company` permission.
+ * @param {number} invitationId - Invitation ID
+ * @returns {Promise<object>}
+ */
+export const cancelMyCompanyInvitation = async (invitationId) => {
+	try {
+		const response = await apiClient.delete(`/my/company/invitations/${invitationId}`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+// ─────────────────────────────────────────────
+// MY COMPANY – Locations
+// ─────────────────────────────────────────────
+
+/**
+ * List locations for the authenticated user's company
+ * @returns {Promise<object>} { success, data: Location[] }
+ */
+export const getMyCompanyLocations = async () => {
+	try {
+		const response = await apiClient.get('/my/company/locations');
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Add a location to the authenticated user's company
+ * Requires `manage_company` permission.
+ * @param {object} locationData
+ * @param {string}  locationData.name    - Required
+ * @param {string}  locationData.address - Required
+ * @param {number}  [locationData.cityId]
+ * @param {string}  [locationData.phone]
+ * @param {number}  [locationData.lat]
+ * @param {number}  [locationData.lng]
+ * @returns {Promise<object>}
+ */
+export const addMyCompanyLocation = async (locationData) => {
+	try {
+		const response = await apiClient.post('/my/company/locations', locationData);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Delete a location from the authenticated user's company
+ * Requires `manage_company` permission.
+ * @param {number} locationId - Location ID
+ * @returns {Promise<object>}
+ */
+export const deleteMyCompanyLocation = async (locationId) => {
+	try {
+		const response = await apiClient.delete(`/my/company/locations/${locationId}`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Update a location in the authenticated user's company
+ * Requires company admin role.
+ * @param {number} locationId - Location ID
+ * @param {object} locationData
+ * @returns {Promise<object>}
+ */
+export const updateMyCompanyLocation = async (locationId, locationData) => {
+	try {
+		const response = await apiClient.put(`/my/company/locations/${locationId}`, locationData);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+// ─────────────────────────────────────────────
+// MY COMPANY – Categories
+// ─────────────────────────────────────────────
+
+/**
+ * List service categories for the authenticated user's company
+ * @returns {Promise<object>}
+ */
+export const getMyCompanyCategories = async () => {
+	try {
+		const response = await apiClient.get('/my/company/categories');
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Get a specific category from the authenticated user's company
+ * @param {string} categoryId - Category UUID
+ * @returns {Promise<object>}
+ */
+export const getMyCompanyCategory = async (categoryId) => {
+	try {
+		const response = await apiClient.get(`/my/company/categories/${categoryId}`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Create a service category for the authenticated user's company
+ * Requires `manage_services` permission.
+ * @param {object} categoryData
+ * @param {string}  categoryData.name - Required
+ * @param {string}  [categoryData.description]
+ * @returns {Promise<object>}
+ */
+export const createMyCompanyCategory = async (categoryData) => {
+	try {
+		const response = await apiClient.post('/my/company/categories', categoryData);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Update a service category in the authenticated user's company
+ * Requires `manage_services` permission.
+ * @param {string} categoryId - Category UUID
+ * @param {object} categoryData
+ * @param {string}  categoryData.name - Required
+ * @param {string}  [categoryData.description]
+ * @returns {Promise<object>}
+ */
+export const updateMyCompanyCategory = async (categoryId, categoryData) => {
+	try {
+		const response = await apiClient.put(`/my/company/categories/${categoryId}`, categoryData);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Delete a service category from the authenticated user's company
+ * Requires `manage_services` permission.
+ * @param {string} categoryId - Category UUID
+ * @returns {Promise<object>}
+ */
+export const deleteMyCompanyCategory = async (categoryId) => {
+	try {
+		const response = await apiClient.delete(`/my/company/categories/${categoryId}`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+// ─────────────────────────────────────────────
+// MY COMPANY – Services
+// ─────────────────────────────────────────────
+
+/**
+ * List services offered by the authenticated user's company (paginated)
+ * @param {object} [params]
+ * @param {number} [params.page=1]
+ * @param {number} [params.limit=20]
+ * @param {number} [params.categoryId]
+ * @param {string} [params.priceType] - 'fixed' | 'hourly' | 'per_unit'
+ * @returns {Promise<object>}
+ */
+export const getMyCompanyServices = async (params = {}) => {
+	try {
+		const response = await apiClient.get('/my/company/services', { params });
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Create a service for the authenticated user's company
+ * Requires `manage_services` permission.
+ * @param {object} serviceData
+ * @param {string}  serviceData.name       - Required
+ * @param {number}  serviceData.categoryId - Required
+ * @param {number}  serviceData.basePrice  - Required
+ * @param {string}  serviceData.priceType  - Required: 'fixed' | 'hourly' | 'per_unit'
+ * @param {string}  [serviceData.description]
+ * @param {number}  [serviceData.duration] - Minutes
+ * @returns {Promise<object>}
+ */
+export const createMyCompanyService = async (serviceData) => {
+	try {
+		const response = await apiClient.post('/my/company/services', serviceData);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Update a service in the authenticated user's company
+ * Requires company admin role.
+ * @param {string} serviceId - Service UUID
+ * @param {object} serviceData
+ * @returns {Promise<object>}
+ */
+export const updateMyCompanyService = async (serviceId, serviceData) => {
+	try {
+		const response = await apiClient.put(`/my/company/services/${serviceId}`, serviceData);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Delete a service from the authenticated user's company
+ * Requires company admin role.
+ * @param {string} serviceId - Service UUID
+ * @returns {Promise<object>}
+ */
+export const deleteMyCompanyService = async (serviceId) => {
+	try {
+		const response = await apiClient.delete(`/my/company/services/${serviceId}`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+// ─────────────────────────────────────────────
+// MY COMPANY – Service Requests
+// ─────────────────────────────────────────────
+
+/**
+ * List service requests for the authenticated user's company (paginated)
+ * @param {object} [params]
+ * @param {number} [params.page=1]
+ * @param {number} [params.limit=20]
+ * @param {string} [params.status]
+ * @returns {Promise<object>}
+ */
+export const getMyCompanyServiceRequests = async (params = {}) => {
+	try {
+		const response = await apiClient.get('/my/company/service-requests', { params });
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Update service request status (my company)
+ * Requires company admin role.
+ * @param {string} requestId - Service request UUID
+ * @param {string} status - 'pending' | 'accepted' | 'rejected' | 'in_progress' | 'completed'
+ * @returns {Promise<object>}
+ */
+export const updateMyCompanyServiceRequestStatus = async (requestId, status) => {
+	try {
+		const response = await apiClient.put(`/my/company/service-requests/${requestId}/status`, { status });
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Assign an employee to a service request (my company)
+ * Requires `manage_company_services` permission.
+ * @param {string} requestId  - Service request UUID
+ * @param {number} employeeId - Employee user ID
+ * @returns {Promise<object>}
+ */
+export const assignEmployeeMyCompany = async (requestId, employeeId) => {
+	try {
+		const response = await apiClient.post(
+			`/my/company/service-requests/${requestId}/assign`,
+			{ employeeId }
+		);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Create a quote for a service request (my company)
+ * Requires `manage_company_services` permission.
+ * @param {string} requestId - Service request UUID
+ * @param {object} quoteData
+ * @param {number}  quoteData.totalPrice - Required
+ * @param {object}  [quoteData.details]
+ * @returns {Promise<object>}
+ */
+export const createMyCompanyQuote = async (requestId, quoteData) => {
+	try {
+		const response = await apiClient.post(
+			`/my/company/service-requests/${requestId}/quote`,
+			quoteData
+		);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Update a quote status for a service request (my company)
+ * Requires `manage_company_services` permission.
+ * @param {number} quoteId - Quote ID
+ * @param {string} status  - 'pending' | 'accepted' | 'rejected'
+ * @returns {Promise<object>}
+ */
+export const updateMyCompanyQuoteStatus = async (quoteId, status) => {
+	try {
+		const response = await apiClient.put(
+			`/my/company/service-requests/quotes/${quoteId}/status`,
+			{ status }
+		);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -323,23 +935,82 @@ export const deleteCompanyCategory = async (companyId, categoryId) => {
 };
 
 export default {
-	getMyCompany,
+	// Admin – Companies
 	getCompanies,
 	getCompany,
 	createCompany,
 	updateCompany,
 	deleteCompany,
+
+	// Admin – Members
 	getCompanyMembers,
 	addCompanyMember,
 	updateCompanyMember,
 	removeCompanyMember,
+
+	// Admin – Invitations
+	getCompanyInvitations,
+	cancelCompanyInvitation,
+
+	// Admin – Locations
 	getCompanyLocations,
 	addCompanyLocation,
-	updateCompanyLocation,
 	deleteCompanyLocation,
+
+	// Admin – Categories
 	getCompanyCategories,
 	getCompanyCategory,
 	createCompanyCategory,
 	updateCompanyCategory,
 	deleteCompanyCategory,
+
+	// Admin – Services
+	getCompanyServices,
+	createCompanyService,
+
+	// Admin – Service Requests
+	getCompanyServiceRequests,
+	assignEmployeeToCompanyRequest,
+	createCompanyQuote,
+	updateCompanyQuoteStatus,
+
+	// My Company – Profile
+	getMyCompany,
+	updateMyCompany,
+
+	// My Company – Members
+	getMyCompanyMembers,
+	addMyCompanyMember,
+	updateMyCompanyMember,
+	removeMyCompanyMember,
+
+	// My Company – Invitations
+	getMyCompanyInvitations,
+	cancelMyCompanyInvitation,
+
+	// My Company – Locations
+	getMyCompanyLocations,
+	addMyCompanyLocation,
+	deleteMyCompanyLocation,
+	updateMyCompanyLocation,
+
+	// My Company – Categories
+	getMyCompanyCategories,
+	getMyCompanyCategory,
+	createMyCompanyCategory,
+	updateMyCompanyCategory,
+	deleteMyCompanyCategory,
+
+	// My Company – Services
+	getMyCompanyServices,
+	createMyCompanyService,
+	updateMyCompanyService,
+	deleteMyCompanyService,
+
+	// My Company – Service Requests
+	getMyCompanyServiceRequests,
+	updateMyCompanyServiceRequestStatus,
+	assignEmployeeMyCompany,
+	createMyCompanyQuote,
+	updateMyCompanyQuoteStatus,
 };

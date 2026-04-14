@@ -1,9 +1,18 @@
 /**
  * Permissions Utility
- * Defines roles, permissions, and access control logic
+ * Defines roles, permissions, and access control logic.
+ *
+ * IMPORTANT: The values of PERMISSIONS constants must match
+ * the permission names returned by the API (snake_case).
+ * Example API response:
+ *   { "permissions": [{ "id": 1, "name": "create_company" }, ...] }
+ *
+ * hasPermission() checks user.permissions[] from the API first.
+ * If the user object has no permissions array it falls back to the
+ * static ROLE_PERMISSIONS map so older cached sessions still work.
  */
 
-// Role definitions
+// ─── Role definitions ──────────────────────────────────────────────────────────
 export const ROLES = {
 	OWNER: 'owner',
 	ADMIN: 'admin',
@@ -14,71 +23,77 @@ export const ROLES = {
 	SUPER_ADMIN: 'super_admin',
 };
 
-// Permission definitions
+// ─── Permission definitions ────────────────────────────────────────────────────
+// Values MUST match the exact permission names the API returns.
 export const PERMISSIONS = {
 	// Company permissions
-	COMPANY_CREATE: 'company.create',
-	COMPANY_VIEW: 'company.view',
-	COMPANY_EDIT: 'company.edit',
-	COMPANY_DELETE: 'company.delete',
-	COMPANY_MANAGE_MEMBERS: 'company.manage_members',
-	COMPANY_MANAGE_LOCATIONS: 'company.manage_locations',
-	COMPANY_MANAGE_CATEGORIES: 'company.manage_categories',
-	COMPANY_VIEW_MEMBERS: 'company.view_members',
+	COMPANY_CREATE: 'create_company',
+	COMPANY_VIEW: 'view_company',
+	COMPANY_EDIT: 'edit_company',
+	COMPANY_DELETE: 'delete_company',
+	COMPANY_MANAGE_MEMBERS: 'manage_company_members',
+	COMPANY_MANAGE_LOCATIONS: 'manage_company_locations',
+	COMPANY_MANAGE_CATEGORIES: 'manage_company_services',
+	COMPANY_VIEW_MEMBERS: 'view_members',
 
-	// Service permissions
-	SERVICE_CREATE: 'service.create',
-	SERVICE_VIEW: 'service.view',
-	SERVICE_EDIT: 'service.edit',
-	SERVICE_DELETE: 'service.delete',
-	SERVICE_MANAGE: 'service.manage',
+
+	SERVICE_CREATE: 'create_service',
+	SERVICE_VIEW: 'view_services',
+	SERVICE_EDIT: 'edit_service',
+	SERVICE_DELETE: 'delete_service',
+	SERVICE_MANAGE: 'manage_services',
 
 	// Service Request permissions
-	REQUEST_CREATE: 'request.create',
-	REQUEST_VIEW: 'request.view',
-	REQUEST_VIEW_OWN: 'request.view_own',
-	REQUEST_VIEW_ALL: 'request.view_all',
-	REQUEST_EDIT: 'request.edit',
-	REQUEST_EDIT_OWN: 'request.edit_own',
-	REQUEST_DELETE: 'request.delete',
-	REQUEST_ASSIGN: 'request.assign',
-	REQUEST_UPDATE_STATUS: 'request.update_status',
+	REQUEST_CREATE: 'create_service_request',
+	REQUEST_VIEW: 'view_requests',
+	REQUEST_VIEW_OWN: 'view_own_requests',
+	REQUEST_VIEW_ALL: 'view_all_requests',
+	REQUEST_EDIT: 'edit_request',
+	REQUEST_EDIT_OWN: 'edit_own_request',
+	REQUEST_DELETE: 'delete_request',
+	REQUEST_ASSIGN: 'assign_request',
+	REQUEST_UPDATE_STATUS: 'update_request_status',
 
 	// Quote permissions
-	QUOTE_CREATE: 'quote.create',
-	QUOTE_VIEW: 'quote.view',
-	QUOTE_ACCEPT: 'quote.accept',
-	QUOTE_REJECT: 'quote.reject',
+	QUOTE_CREATE: 'create_quote',
+	QUOTE_VIEW: 'view_quotes',
+	QUOTE_ACCEPT: 'accept_quote',
+	QUOTE_REJECT: 'reject_quote',
 
 	// Assignment permissions
-	ASSIGNMENT_CREATE: 'assignment.create',
-	ASSIGNMENT_VIEW: 'assignment.view',
-	ASSIGNMENT_UPDATE: 'assignment.update',
-	ASSIGNMENT_COMPLETE: 'assignment.complete',
+	ASSIGNMENT_CREATE: 'create_assignment',
+	ASSIGNMENT_VIEW: 'view_assignments',
+	ASSIGNMENT_UPDATE: 'update_assignment',
+	ASSIGNMENT_COMPLETE: 'complete_assignment',
 
 	// GPS Tracking permissions
-	TRACKING_START: 'tracking.start',
-	TRACKING_STOP: 'tracking.stop',
-	TRACKING_VIEW: 'tracking.view',
+	TRACKING_START: 'start_tracking',
+	TRACKING_STOP: 'stop_tracking',
+	TRACKING_VIEW: 'view_tracking',
 
-	// NFC permissions
-	NFC_CREATE: 'nfc.create',
-	NFC_VIEW: 'nfc.view',
-	NFC_EDIT: 'nfc.edit',
-	NFC_DELETE: 'nfc.delete',
+	// NFC / Box permissions
+	// NFC_MANAGE covers all NFC operations when the API grants a single "manage" permission.
+	// The granular ones (NFC_VIEW, NFC_CREATE, etc.) are used when the API is more specific.
+	NFC_MANAGE: 'manage_nfc',
+	NFC_VIEW: 'view_nfc',
+	NFC_CREATE: 'create_nfc',
+	NFC_EDIT: 'edit_nfc',
+	NFC_DELETE: 'delete_nfc',
 
-	// Admin permissions
-	ADMIN_ACCESS: 'admin.access',
-	ADMIN_USERS: 'admin.users',
-	ADMIN_COMPANIES: 'admin.companies',
+	// Admin / role management permissions
+	ADMIN_ACCESS: 'admin_access',
+	ADMIN_USERS: 'view_users',
+	ADMIN_ASSIGN_ROLES: 'assign_roles',
+	ADMIN_COMPANIES: 'manage_companies',
 };
 
-// Role-based permission mapping
+// ─── Role-based permission mapping (fallback only) ─────────────────────────────
+// This is used ONLY when the user object has no permissions[] from the API.
+// Keep these in sync with your backend roles as a safety net.
 export const ROLE_PERMISSIONS = {
-	[ROLES.SUPER_ADMIN]: ['*'], // All permissions
+	[ROLES.SUPER_ADMIN]: ['*'],
 
 	[ROLES.OWNER]: [
-		// Company permissions (owner of specific company)
 		PERMISSIONS.COMPANY_VIEW,
 		PERMISSIONS.COMPANY_EDIT,
 		PERMISSIONS.COMPANY_DELETE,
@@ -86,138 +101,91 @@ export const ROLE_PERMISSIONS = {
 		PERMISSIONS.COMPANY_MANAGE_LOCATIONS,
 		PERMISSIONS.COMPANY_MANAGE_CATEGORIES,
 		PERMISSIONS.COMPANY_VIEW_MEMBERS,
-
-		// Service permissions (for owned company)
 		PERMISSIONS.SERVICE_CREATE,
 		PERMISSIONS.SERVICE_VIEW,
 		PERMISSIONS.SERVICE_EDIT,
 		PERMISSIONS.SERVICE_DELETE,
 		PERMISSIONS.SERVICE_MANAGE,
-
-		// Request permissions (company's requests)
 		PERMISSIONS.REQUEST_VIEW_ALL,
 		PERMISSIONS.REQUEST_EDIT,
 		PERMISSIONS.REQUEST_ASSIGN,
 		PERMISSIONS.REQUEST_UPDATE_STATUS,
-
-		// Quote permissions
 		PERMISSIONS.QUOTE_CREATE,
 		PERMISSIONS.QUOTE_VIEW,
-
-		// Assignment permissions
 		PERMISSIONS.ASSIGNMENT_CREATE,
 		PERMISSIONS.ASSIGNMENT_VIEW,
 		PERMISSIONS.ASSIGNMENT_UPDATE,
-
-		// Tracking permissions
 		PERMISSIONS.TRACKING_VIEW,
-
-		// NFC permissions
-		PERMISSIONS.NFC_CREATE,
+		PERMISSIONS.NFC_MANAGE,
 		PERMISSIONS.NFC_VIEW,
+		PERMISSIONS.NFC_CREATE,
 		PERMISSIONS.NFC_EDIT,
 		PERMISSIONS.NFC_DELETE,
 	],
 
 	[ROLES.ADMIN]: [
-		// Company permissions
 		PERMISSIONS.COMPANY_VIEW,
 		PERMISSIONS.COMPANY_EDIT,
 		PERMISSIONS.COMPANY_MANAGE_MEMBERS,
 		PERMISSIONS.COMPANY_MANAGE_LOCATIONS,
 		PERMISSIONS.COMPANY_MANAGE_CATEGORIES,
 		PERMISSIONS.COMPANY_VIEW_MEMBERS,
-
-		// Service permissions
 		PERMISSIONS.SERVICE_CREATE,
 		PERMISSIONS.SERVICE_VIEW,
 		PERMISSIONS.SERVICE_EDIT,
 		PERMISSIONS.SERVICE_DELETE,
 		PERMISSIONS.SERVICE_MANAGE,
-
-		// Request permissions
 		PERMISSIONS.REQUEST_VIEW_ALL,
 		PERMISSIONS.REQUEST_EDIT,
 		PERMISSIONS.REQUEST_ASSIGN,
 		PERMISSIONS.REQUEST_UPDATE_STATUS,
-
-		// Quote permissions
 		PERMISSIONS.QUOTE_CREATE,
 		PERMISSIONS.QUOTE_VIEW,
-
-		// Assignment permissions
 		PERMISSIONS.ASSIGNMENT_CREATE,
 		PERMISSIONS.ASSIGNMENT_VIEW,
 		PERMISSIONS.ASSIGNMENT_UPDATE,
-
-		// Tracking permissions
 		PERMISSIONS.TRACKING_VIEW,
-
-		// NFC permissions
-		PERMISSIONS.NFC_CREATE,
+		PERMISSIONS.NFC_MANAGE,
 		PERMISSIONS.NFC_VIEW,
+		PERMISSIONS.NFC_CREATE,
 		PERMISSIONS.NFC_EDIT,
 		PERMISSIONS.NFC_DELETE,
 	],
 
 	[ROLES.MANAGER]: [
-		// Company permissions (limited)
 		PERMISSIONS.COMPANY_VIEW,
 		PERMISSIONS.COMPANY_VIEW_MEMBERS,
-
-		// Service permissions
 		PERMISSIONS.SERVICE_VIEW,
 		PERMISSIONS.SERVICE_EDIT,
 		PERMISSIONS.SERVICE_MANAGE,
-
-		// Request permissions
 		PERMISSIONS.REQUEST_VIEW_ALL,
 		PERMISSIONS.REQUEST_ASSIGN,
 		PERMISSIONS.REQUEST_UPDATE_STATUS,
-
-		// Quote permissions
 		PERMISSIONS.QUOTE_CREATE,
 		PERMISSIONS.QUOTE_VIEW,
-
-		// Assignment permissions
 		PERMISSIONS.ASSIGNMENT_CREATE,
 		PERMISSIONS.ASSIGNMENT_VIEW,
 		PERMISSIONS.ASSIGNMENT_UPDATE,
-
-		// Tracking permissions
 		PERMISSIONS.TRACKING_VIEW,
-
-		// NFC permissions
+		PERMISSIONS.NFC_MANAGE,
 		PERMISSIONS.NFC_VIEW,
 		PERMISSIONS.NFC_CREATE,
 	],
 
 	[ROLES.MEMBER]: [
-		// Company permissions
 		PERMISSIONS.COMPANY_VIEW,
-
-		// Service permissions
 		PERMISSIONS.SERVICE_VIEW,
-
-		// Request permissions (own assignments only)
 		PERMISSIONS.REQUEST_VIEW,
 		PERMISSIONS.REQUEST_UPDATE_STATUS,
-
-		// Assignment permissions (own only)
 		PERMISSIONS.ASSIGNMENT_VIEW,
 		PERMISSIONS.ASSIGNMENT_UPDATE,
 		PERMISSIONS.ASSIGNMENT_COMPLETE,
-
-		// Tracking permissions
 		PERMISSIONS.TRACKING_START,
 		PERMISSIONS.TRACKING_STOP,
-
-		// NFC permissions
 		PERMISSIONS.NFC_VIEW,
 	],
 
 	[ROLES.EMPLOYEE]: [
-		// Same as MEMBER
 		PERMISSIONS.COMPANY_VIEW,
 		PERMISSIONS.SERVICE_VIEW,
 		PERMISSIONS.REQUEST_VIEW,
@@ -231,71 +199,93 @@ export const ROLE_PERMISSIONS = {
 	],
 
 	[ROLES.CUSTOMER]: [
-		// Service permissions
 		PERMISSIONS.SERVICE_VIEW,
-
-		// Request permissions (own only)
 		PERMISSIONS.REQUEST_CREATE,
 		PERMISSIONS.REQUEST_VIEW_OWN,
 		PERMISSIONS.REQUEST_EDIT_OWN,
-
-		// Quote permissions
 		PERMISSIONS.QUOTE_VIEW,
 		PERMISSIONS.QUOTE_ACCEPT,
 		PERMISSIONS.QUOTE_REJECT,
-
-		// Assignment permissions
 		PERMISSIONS.ASSIGNMENT_VIEW,
-
-		// Tracking permissions
 		PERMISSIONS.TRACKING_VIEW,
-
-		// NFC permissions
-		PERMISSIONS.NFC_CREATE,
+		PERMISSIONS.NFC_MANAGE,
 		PERMISSIONS.NFC_VIEW,
+		PERMISSIONS.NFC_CREATE,
 		PERMISSIONS.NFC_EDIT,
 		PERMISSIONS.NFC_DELETE,
 	],
 };
 
+// ─── Core permission checker ───────────────────────────────────────────────────
+
 /**
- * Check if a user has a specific permission
- * @param {Object} user - User object with roles
- * @param {string} permission - Permission to check
- * @param {Object} context - Additional context (e.g., companyId, resourceOwnerId)
+ * Check if a user has a specific permission.
+ *
+ * Flow:
+ *   1. Super-admin role → always granted.
+ *   2. user.permissions[] present (API-driven) → direct name match only.
+ *      If the permission is not in the list it is DENIED (no silent fallback).
+ *   3. No permissions[] (old cached session) → role-based ROLE_PERMISSIONS map.
+ *
+ * @param {Object}  user       - User object from the store (has roles[] and/or permissions[])
+ * @param {string}  permission - A PERMISSIONS constant value, e.g. 'view_nfc'
+ * @param {Object}  context    - Optional: { requireOwnership, resourceOwnerId }
  * @returns {boolean}
  */
 export const hasPermission = (user, permission, context = {}) => {
 	if (!user) return false;
 
-	// Get user roles (handle both array and object structure)
+	const getRoleName = (role) => (typeof role === 'string' ? role : role?.name);
+
 	const userRoles = Array.isArray(user.roles)
 		? user.roles
 		: user.role
 			? [user.role]
 			: [];
 
-	// Check if user has super admin role
-	if (userRoles.some((role) => {
-		const roleName = typeof role === 'string' ? role : role.name;
-		return roleName === ROLES.SUPER_ADMIN;
-	})) {
-		return true; // Super admin has all permissions
+	// 1. Super-admin bypasses everything
+	if (userRoles.some((r) => getRoleName(r) === ROLES.SUPER_ADMIN)) {
+		return true;
 	}
 
-	// Check each role's permissions
+	// 2. API-driven check – user.permissions[] returned by the server
+	if (Array.isArray(user.permissions) && user.permissions.length > 0) {
+		// Derive the broad "manage_X" equivalent for any granular permission.
+		// e.g. 'view_nfc' → 'manage_nfc'
+		// This means a user who has manage_nfc automatically satisfies
+		// view_nfc, create_nfc, edit_nfc, and delete_nfc checks.
+		const manageEquivalent = permission.replace(
+			/^(view|create|edit|delete|update)_/,
+			'manage_',
+		);
+		const hasManageWildcard = manageEquivalent !== permission;
+
+		const granted = user.permissions.some((p) => {
+			const pName = typeof p === 'string' ? p : p?.name;
+			return pName === permission || (hasManageWildcard && pName === manageEquivalent);
+		});
+
+		if (granted) {
+			if (context.requireOwnership) {
+				return user.id === context.resourceOwnerId;
+			}
+			return true;
+		}
+
+		// Permission array exists but this permission is not in it → deny
+		return false;
+	}
+
+	// 3. Role-based fallback (no permissions array available)
 	for (const role of userRoles) {
-		const roleName = typeof role === 'string' ? role : role.name;
+		const roleName = getRoleName(role);
 		const rolePermissions = ROLE_PERMISSIONS[roleName] || [];
 
-		// Check for wildcard permission
 		if (rolePermissions.includes('*')) {
 			return true;
 		}
 
-		// Check for specific permission
 		if (rolePermissions.includes(permission)) {
-			// Additional context-based checks
 			if (context.requireOwnership) {
 				return user.id === context.resourceOwnerId;
 			}
@@ -307,10 +297,10 @@ export const hasPermission = (user, permission, context = {}) => {
 };
 
 /**
- * Check if user has any of the specified permissions
- * @param {Object} user - User object
- * @param {Array<string>} permissions - Array of permissions
- * @param {Object} context - Additional context
+ * Check if user has any of the given permissions.
+ * @param {Object}   user        - User object
+ * @param {string[]} permissions - Array of PERMISSIONS constants
+ * @param {Object}   context     - Optional context
  * @returns {boolean}
  */
 export const hasAnyPermission = (user, permissions, context = {}) => {
@@ -318,10 +308,10 @@ export const hasAnyPermission = (user, permissions, context = {}) => {
 };
 
 /**
- * Check if user has all of the specified permissions
- * @param {Object} user - User object
- * @param {Array<string>} permissions - Array of permissions
- * @param {Object} context - Additional context
+ * Check if user has all of the given permissions.
+ * @param {Object}   user        - User object
+ * @param {string[]} permissions - Array of PERMISSIONS constants
+ * @param {Object}   context     - Optional context
  * @returns {boolean}
  */
 export const hasAllPermissions = (user, permissions, context = {}) => {
@@ -329,9 +319,9 @@ export const hasAllPermissions = (user, permissions, context = {}) => {
 };
 
 /**
- * Check if user has a specific role
- * @param {Object} user - User object
- * @param {string} roleName - Role name to check
+ * Check if user has a specific role by name.
+ * @param {Object} user     - User object
+ * @param {string} roleName - Role name (use ROLES constant)
  * @returns {boolean}
  */
 export const hasRole = (user, roleName) => {
@@ -344,15 +334,15 @@ export const hasRole = (user, roleName) => {
 			: [];
 
 	return userRoles.some((role) => {
-		const name = typeof role === 'string' ? role : role.name;
+		const name = typeof role === 'string' ? role : role?.name;
 		return name === roleName;
 	});
 };
 
 /**
- * Check if user has any of the specified roles
- * @param {Object} user - User object
- * @param {Array<string>} roleNames - Array of role names
+ * Check if user has any of the given roles.
+ * @param {Object}   user      - User object
+ * @param {string[]} roleNames - Array of role names
  * @returns {boolean}
  */
 export const hasAnyRole = (user, roleNames) => {
@@ -360,8 +350,8 @@ export const hasAnyRole = (user, roleNames) => {
 };
 
 /**
- * Check if user is company owner
- * @param {Object} user - User object
+ * Check if user is the owner of a specific company.
+ * @param {Object} user      - User object
  * @param {number} companyId - Company ID
  * @returns {boolean}
  */
@@ -370,17 +360,15 @@ export const isCompanyOwner = (user, companyId) => {
 
 	const companies = user.companies || [];
 	const company = companies.find((c) => c.id === companyId || c.company_id === companyId);
-
 	if (!company) return false;
 
-	// Check if user's role in this company is owner
 	const memberRole = typeof company.role === 'string' ? company.role : company.role?.name;
 	return memberRole === ROLES.OWNER;
 };
 
 /**
- * Check if user is company admin
- * @param {Object} user - User object
+ * Check if user is an admin of a specific company.
+ * @param {Object} user      - User object
  * @param {number} companyId - Company ID
  * @returns {boolean}
  */
@@ -389,16 +377,15 @@ export const isCompanyAdmin = (user, companyId) => {
 
 	const companies = user.companies || [];
 	const company = companies.find((c) => c.id === companyId || c.company_id === companyId);
-
 	if (!company) return false;
 
 	const memberRole = typeof company.role === 'string' ? company.role : company.role?.name;
-	return memberRole === ROLES.ADMIN;
+	return memberRole === ROLES.ADMIN || company.role_in_company === 'admin';
 };
 
 /**
- * Check if user can manage company (owner or admin)
- * @param {Object} user - User object
+ * Check if user can manage a company (owner or admin of that company).
+ * @param {Object} user      - User object
  * @param {number} companyId - Company ID
  * @returns {boolean}
  */
@@ -407,8 +394,8 @@ export const canManageCompany = (user, companyId) => {
 };
 
 /**
- * Get user's role in a specific company
- * @param {Object} user - User object
+ * Get user's role within a specific company.
+ * @param {Object} user      - User object
  * @param {number} companyId - Company ID
  * @returns {string|null}
  */
@@ -417,32 +404,35 @@ export const getUserCompanyRole = (user, companyId) => {
 
 	const companies = user.companies || [];
 	const company = companies.find((c) => c.id === companyId || c.company_id === companyId);
-
 	if (!company) return null;
 
-	return typeof company.role === 'string' ? company.role : company.role?.name;
+	return company.role_in_company
+		|| (typeof company.role === 'string' ? company.role : company.role?.name)
+		|| null;
 };
 
 /**
- * Format permission name for display
- * @param {string} permission - Permission constant
+ * Format a permission name for human display.
+ * @param {string} permission - Permission constant value
  * @returns {string}
  */
 export const formatPermission = (permission) => {
 	return permission
-		.replace('_', ' ')
-		.split('.')
+		.split('_')
 		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-		.join(' - ');
+		.join(' ');
 };
 
 /**
- * Format role name for display
- * @param {string} role - Role constant
+ * Format a role name for human display.
+ * @param {string} role - Role constant value
  * @returns {string}
  */
 export const formatRole = (role) => {
-	return role.charAt(0).toUpperCase() + role.slice(1).replace('_', ' ');
+	return role
+		.split('_')
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(' ');
 };
 
 export default {

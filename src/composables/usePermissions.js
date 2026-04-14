@@ -26,6 +26,20 @@ export const usePermissions = () => {
 	// Current user
 	const user = computed(() => authStore.state.user);
 
+	// Flat list of permission names for the authenticated user (from the API).
+	// e.g. ["create_company", "manage_services", "manage_nfc", ...]
+	const userPermissions = computed(() => authStore.userPermissions.value || []);
+
+	/**
+	 * Check a permission by its exact API name (e.g. "manage_nfc").
+	 * Useful when you want to bypass the PERMISSIONS constants entirely.
+	 * @param {string} apiPermName - The server-side permission name
+	 * @returns {boolean}
+	 */
+	const hasApiPermission = (apiPermName) => {
+		return userPermissions.value.includes(apiPermName);
+	};
+
 	// Role checks
 	const isSuperAdmin = computed(() => hasRole(user.value, ROLES.SUPER_ADMIN));
 	const isOwner = computed(() => hasRole(user.value, ROLES.OWNER));
@@ -122,10 +136,12 @@ export const usePermissions = () => {
 	const canViewTracking = computed(() => can(PERMISSIONS.TRACKING_VIEW));
 
 	// NFC permissions (computed)
-	const canCreateNfc = computed(() => can(PERMISSIONS.NFC_CREATE));
-	const canViewNfc = computed(() => can(PERMISSIONS.NFC_VIEW));
-	const canEditNfc = computed(() => can(PERMISSIONS.NFC_EDIT));
-	const canDeleteNfc = computed(() => can(PERMISSIONS.NFC_DELETE));
+	// Each check accepts both the granular permission (e.g. "view_nfc") AND the
+	// broad "manage_nfc" permission so either API style works automatically.
+	const canViewNfc = computed(() => can(PERMISSIONS.NFC_VIEW) || can(PERMISSIONS.NFC_MANAGE));
+	const canCreateNfc = computed(() => can(PERMISSIONS.NFC_CREATE) || can(PERMISSIONS.NFC_MANAGE));
+	const canEditNfc = computed(() => can(PERMISSIONS.NFC_EDIT) || can(PERMISSIONS.NFC_MANAGE));
+	const canDeleteNfc = computed(() => can(PERMISSIONS.NFC_DELETE) || can(PERMISSIONS.NFC_MANAGE));
 
 	// Admin permissions (computed)
 	const canAccessAdmin = computed(() => can(PERMISSIONS.ADMIN_ACCESS));
@@ -148,6 +164,10 @@ export const usePermissions = () => {
 	return {
 		// User
 		user,
+
+		// Raw API permissions (server-driven)
+		userPermissions,
+		hasApiPermission,
 
 		// Role checks
 		isSuperAdmin,
