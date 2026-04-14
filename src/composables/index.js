@@ -11,8 +11,10 @@ import { useServices } from './useServices';
 import { useServiceRequests } from './useServiceRequests';
 import { useToast } from './useToast';
 import { usePermissions } from './usePermissions';
+import { useLocation } from './useLocation';
+import { useEmployeeAssignments } from './useEmployeeAssignments';
 
-export { useAuth, useNfc, useNfcReader, useCompanies, useServices, useServiceRequests, useToast, usePermissions };
+export { useAuth, useNfc, useNfcReader, useCompanies, useServices, useServiceRequests, useToast, usePermissions, useLocation, useEmployeeAssignments };
 
 export default {
 	useAuth,
@@ -23,4 +25,6 @@ export default {
 	useServiceRequests,
 	useToast,
 	usePermissions,
+	useLocation,
+	useEmployeeAssignments,
 };

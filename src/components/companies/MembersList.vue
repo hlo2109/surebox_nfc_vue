@@ -70,7 +70,7 @@
 		<div v-else class="space-y-3">
 			<div
 				v-for="member in members"
-				:key="member.id"
+				:key="member.user_uuid"
 				class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
 			>
 				<div class="flex items-center justify-between">
@@ -284,45 +284,12 @@
 					>
 						User *
 					</label>
-					<AutoComplete
+					<input
 						v-model="addForm.userId"
-						:suggestions="filteredUsers"
-						@complete="searchUsers"
-						optionLabel="name"
-						placeholder="Search by name, email or ID"
-						:loading="loadingUsers"
-						class="w-full"
-					>
-						<template #option="slotProps">
-							<div class="autocomplete-user-option">
-								<div class="user-avatar">
-									<span>
-										{{
-											slotProps.option.name
-												?.charAt(0)
-												.toUpperCase() || "?"
-										}}
-									</span>
-								</div>
-								<div class="user-info">
-									<div class="user-name">
-										{{ slotProps.option.name }}
-									</div>
-									<div class="user-email">
-										{{ slotProps.option.email }}
-									</div>
-								</div>
-								<div class="user-id">
-									ID: {{ slotProps.option.id }}
-								</div>
-							</div>
-						</template>
-						<template #empty>
-							<div class="custom-empty-message">
-								<div class="empty-text">No users found</div>
-							</div>
-						</template>
-					</AutoComplete>
+						type="email"
+						placeholder="user@example.com"
+						class="email-input"
+					/>
 					<p
 						class="text-xs text-gray-500 mt-1.5 flex items-center gap-1"
 					>
@@ -339,7 +306,7 @@
 								d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 							/>
 						</svg>
-						Search and select a user to add as a member
+						Enter the email address of the user to add as a member
 					</p>
 				</div>
 
@@ -706,23 +673,23 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, watch } from "vue";
 import Dialog from "primevue/dialog";
 import Paginator from "primevue/paginator";
-import AutoComplete from "primevue/autocomplete";
+
 import Select from "primevue/select";
 import { useCompanies, useToast } from "@/composables";
 import { formatDate } from "@/utils/formatters";
-import * as usersApi from "@/api/users.api";
+
 import * as rolesApi from "@/api/roles.api";
 
-const { addCompanyMember, updateCompanyMember, removeCompanyMember } =
+const { addMyCompanyMember, updateMyCompanyMember, removeMyCompanyMember } =
 	useCompanies();
 const { showToast } = useToast();
 
 const props = defineProps({
 	companyId: {
-		type: Number,
+		type: String,
 		required: true,
 	},
 	members: {
@@ -735,11 +702,11 @@ const props = defineProps({
 	},
 	canAddMembers: {
 		type: Boolean,
-		default: true,
+		default: false,
 	},
 	canManageMembers: {
 		type: Boolean,
-		default: true,
+		default: false,
 	},
 	showPagination: {
 		type: Boolean,
@@ -776,10 +743,7 @@ const addForm = ref({
 });
 
 // Data for dropdowns
-const users = ref([]);
 const roles = ref([]);
-const filteredUsers = ref([]);
-const loadingUsers = ref(false);
 const loadingRoles = ref(false);
 
 const editForm = ref({
@@ -798,50 +762,41 @@ const totalPages = computed(() => {
 	return Math.ceil(props.totalRecords / props.pageSize);
 });
 
-// Lifecycle
-onMounted(async () => {
-	await loadRoles();
-	await loadUsers();
+// Load roles the first time the Add-member dialog is opened.
+watch(showAddDialog, async (isOpen) => {
+	if (isOpen && roles.value.length === 0) {
+		await loadRoles();
+	}
 });
 
 // Methods
-const loadUsers = async () => {
-	loadingUsers.value = true;
-	try {
-		const response = await usersApi.getAllUsers();
-		users.value = response.data || response || [];
-	} catch (error) {
-		showToast("error", "Error", "Failed to load users");
-		console.error("Error loading users:", error);
-	} finally {
-		loadingUsers.value = false;
-	}
-};
+
+// Default roles used as a fallback when the /admin/roles endpoint is
+// not accessible (e.g. returns 403 for non-super-admin users).
+const DEFAULT_ROLES = [
+	{ id: "owner", name: "owner", description: "Company owner" },
+	{ id: "admin", name: "admin", description: "Company administrator" },
+	{ id: "manager", name: "manager", description: "Company manager" },
+	{ id: "member", name: "member", description: "Team member" },
+	{ id: "employee", name: "employee", description: "Employee" },
+];
 
 const loadRoles = async () => {
 	loadingRoles.value = true;
 	try {
-		const response = await rolesApi.getCompanyRoles();
-		roles.value = response.data || response || [];
+		const response = await rolesApi.getRoles();
+		const fetched = response.data || response || [];
+		roles.value = fetched.length ? fetched : DEFAULT_ROLES;
 	} catch (error) {
-		showToast("error", "Error", "Failed to load roles");
-		console.error("Error loading roles:", error);
+		// 403 means the endpoint is admin-only; silently use the default list
+		// so the UI still works without a scary error toast.
+		console.warn(
+			"Could not fetch roles from API, using defaults:",
+			error.message,
+		);
+		roles.value = DEFAULT_ROLES;
 	} finally {
 		loadingRoles.value = false;
-	}
-};
-
-const searchUsers = (event) => {
-	const query = event.query.toLowerCase();
-	if (!query) {
-		filteredUsers.value = users.value;
-	} else {
-		filteredUsers.value = users.value.filter(
-			(user) =>
-				user.name?.toLowerCase().includes(query) ||
-				user.email?.toLowerCase().includes(query) ||
-				user.id?.toString().includes(query),
-		);
 	}
 };
 
@@ -920,7 +875,7 @@ const getStatusDotClass = (status) => {
 // Event handlers
 const handleAddMember = async () => {
 	if (!addForm.value.userId) {
-		showToast("error", "Validation Error", "Please select a user");
+		showToast("error", "Validation Error", "Please enter a user email");
 		return;
 	}
 
@@ -931,11 +886,10 @@ const handleAddMember = async () => {
 
 	adding.value = true;
 
-	// Extract the user ID from the user object
-	const userId =
-		typeof addForm.value.userId === "object"
-			? addForm.value.userId.id
-			: addForm.value.userId;
+	console.log("addForm", addForm);
+
+	// Use the email directly from the text field
+	const userEmail = addForm.value.userId;
 
 	// Extract the role name from the role object
 	const roleName =
@@ -943,9 +897,9 @@ const handleAddMember = async () => {
 			? addForm.value.role.name
 			: addForm.value.role;
 
-	const result = await addCompanyMember(props.companyId, {
-		userId: userId,
-		role: roleName,
+	const result = await addMyCompanyMember({
+		email: userEmail,
+		roleInCompany: roleName,
 	});
 
 	if (result.success) {
@@ -957,8 +911,14 @@ const handleAddMember = async () => {
 	adding.value = false;
 };
 
-const startEditMember = (member) => {
+const startEditMember = async (member) => {
 	memberToEdit.value = member;
+
+	// Ensure roles are available before the dialog opens
+	if (roles.value.length === 0) {
+		await loadRoles();
+	}
+
 	// Find the role object that matches the member's current role
 	const currentRoleName = member.role_in_company || member.role || "";
 	const matchingRole = roles.value.find((r) => r.name === currentRoleName);
@@ -977,10 +937,8 @@ const handleEditMember = async () => {
 	}
 
 	editing.value = true;
-	const userId =
-		memberToEdit.value.user_id ||
-		memberToEdit.value.userId ||
-		memberToEdit.value.id;
+	console.log("memberToEdit", memberToEdit);
+	const userId = memberToEdit.value.user_uuid;
 
 	// Extract the role name from the role object
 	const roleName =
@@ -988,8 +946,8 @@ const handleEditMember = async () => {
 			? editForm.value.role.name
 			: editForm.value.role;
 
-	const result = await updateCompanyMember(props.companyId, userId, {
-		role: roleName,
+	const result = await updateMyCompanyMember(userId, {
+		roleInCompany: roleName,
 	});
 
 	if (result.success) {
@@ -1011,10 +969,11 @@ const handleRemoveMember = async () => {
 
 	removing.value = true;
 	const userId =
+		memberToRemove.value.user_uuid ||
 		memberToRemove.value.user_id ||
 		memberToRemove.value.userId ||
 		memberToRemove.value.id;
-	const result = await removeCompanyMember(props.companyId, userId);
+	const result = await removeMyCompanyMember(userId);
 
 	if (result.success) {
 		showRemoveDialog.value = false;
@@ -1031,13 +990,8 @@ const handlePageChange = (event) => {
 </script>
 
 <style scoped>
-/* PrimeVue AutoComplete Custom Styles */
-:deep(.p-autocomplete) {
-	width: 100%;
-	position: relative;
-}
-
-:deep(.p-autocomplete-input) {
+/* Email input field */
+.email-input {
 	width: 100%;
 	padding: 0.625rem 1rem;
 	border: 1px solid #e5e7eb;
@@ -1047,169 +1001,21 @@ const handlePageChange = (event) => {
 	color: #111827;
 	transition: all 0.15s ease-in-out;
 	line-height: 1.25rem;
+	outline: none;
 }
 
-:deep(.p-autocomplete-input::placeholder) {
+.email-input::placeholder {
 	color: #9ca3af;
 }
 
-:deep(.p-autocomplete-input:hover) {
+.email-input:hover {
 	border-color: #d1d5db;
 }
 
-:deep(.p-autocomplete-input:focus) {
+.email-input:focus {
 	border-color: #0d65ae;
 	outline: none;
 	box-shadow: 0 0 0 3px rgba(13, 101, 174, 0.1);
-}
-
-:deep(.p-autocomplete-loader) {
-	position: absolute;
-	right: 1rem;
-	top: 50%;
-	transform: translateY(-50%);
-	color: #0d65ae;
-	animation: spin 1s linear infinite;
-}
-
-:deep(.p-autocomplete-panel) {
-	background: white;
-	border: 1px solid #e5e7eb;
-	border-radius: 0.75rem;
-	box-shadow:
-		0 20px 25px -5px rgba(0, 0, 0, 0.1),
-		0 10px 10px -5px rgba(0, 0, 0, 0.04);
-	margin-top: 0.5rem;
-	overflow: hidden;
-}
-
-:deep(.p-autocomplete-list-container) {
-	max-height: 320px;
-	overflow-y: auto;
-}
-
-:deep(.p-autocomplete-list) {
-	padding: 0.5rem;
-	list-style: none;
-	margin: 0;
-}
-
-:deep(.p-autocomplete-item) {
-	padding: 0;
-	cursor: pointer;
-	transition: all 0.2s ease-in-out;
-	border-radius: 0.5rem;
-	margin: 0.25rem 0;
-	overflow: hidden;
-}
-
-:deep(.p-autocomplete-item:hover) {
-	background-color: #f9fafb;
-	transform: translateX(2px);
-}
-
-:deep(.p-autocomplete-item.p-focus) {
-	background-color: #f3f4f6;
-	outline: none;
-}
-
-:deep(.p-autocomplete-item.p-autocomplete-item-selected) {
-	background-color: #eff6ff;
-	border-left: 3px solid #0d65ae;
-}
-
-:deep(.p-autocomplete-item.p-autocomplete-item-selected:hover) {
-	background-color: #dbeafe;
-}
-
-/* Custom Empty Message Styling */
-.custom-empty-message {
-	padding: 1.25rem 1rem;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	text-align: center;
-}
-
-.empty-text {
-	color: #9ca3af;
-	font-size: 0.8125rem;
-	font-weight: 500;
-	line-height: 1.5;
-}
-
-/* Custom AutoComplete User Option Styling */
-.autocomplete-user-option {
-	display: flex;
-	align-items: center;
-	gap: 0.75rem;
-	padding: 0.75rem 1rem;
-}
-
-.user-avatar {
-	width: 2.5rem;
-	height: 2.5rem;
-	border-radius: 9999px;
-	background: linear-gradient(135deg, #0d65ae 0%, #0a4f87 100%);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-	box-shadow: 0 2px 4px rgba(13, 101, 174, 0.2);
-}
-
-.user-avatar span {
-	color: white;
-	font-size: 0.875rem;
-	font-weight: 600;
-	letter-spacing: 0.025em;
-}
-
-.user-info {
-	flex: 1;
-	min-width: 0;
-	display: flex;
-	flex-direction: column;
-	gap: 0.125rem;
-}
-
-.user-name {
-	font-size: 0.875rem;
-	font-weight: 500;
-	color: #111827;
-	line-height: 1.25rem;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.user-email {
-	font-size: 0.75rem;
-	color: #6b7280;
-	line-height: 1rem;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.user-id {
-	font-size: 0.75rem;
-	color: #9ca3af;
-	font-weight: 500;
-	background: #f3f4f6;
-	padding: 0.25rem 0.5rem;
-	border-radius: 0.375rem;
-	flex-shrink: 0;
-}
-
-:deep(.p-autocomplete-item:hover) .user-avatar {
-	box-shadow: 0 4px 6px rgba(13, 101, 174, 0.3);
-	transform: scale(1.05);
-}
-
-:deep(.p-autocomplete-item.p-autocomplete-item-selected) .user-name {
-	color: #0d65ae;
-	font-weight: 600;
 }
 
 /* PrimeVue Select Custom Styles */
@@ -1383,31 +1189,26 @@ const handlePageChange = (event) => {
 }
 
 /* Custom Scrollbar Styling for Dropdowns */
-:deep(.p-autocomplete-list-container::-webkit-scrollbar),
 :deep(.p-select-list-container::-webkit-scrollbar) {
 	width: 8px;
 }
 
-:deep(.p-autocomplete-list-container::-webkit-scrollbar-track),
 :deep(.p-select-list-container::-webkit-scrollbar-track) {
 	background: #f9fafb;
 	border-radius: 0.5rem;
 }
 
-:deep(.p-autocomplete-list-container::-webkit-scrollbar-thumb),
 :deep(.p-select-list-container::-webkit-scrollbar-thumb) {
 	background: #d1d5db;
 	border-radius: 0.5rem;
 	border: 2px solid #f9fafb;
 }
 
-:deep(.p-autocomplete-list-container::-webkit-scrollbar-thumb:hover),
 :deep(.p-select-list-container::-webkit-scrollbar-thumb:hover) {
 	background: #9ca3af;
 }
 
 /* Firefox Scrollbar */
-:deep(.p-autocomplete-list-container),
 :deep(.p-select-list-container) {
 	scrollbar-width: thin;
 	scrollbar-color: #d1d5db #f9fafb;

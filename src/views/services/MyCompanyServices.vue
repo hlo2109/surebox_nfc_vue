@@ -255,9 +255,11 @@
 
 				<!-- Tabs -->
 				<div
-					class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6"
+					class="bg-white rounded-xl border border-gray-200 shadow-sm mb-6"
 				>
-					<div class="border-b border-gray-200 bg-gray-50">
+					<div
+						class="border-b border-gray-200 bg-gray-50 rounded-t-xl overflow-hidden"
+					>
 						<div class="flex gap-1 p-2">
 							<button
 								@click="activeTab = 'services'"
@@ -331,9 +333,9 @@
 								:services="services"
 								:categories="categories"
 								:loading="loadingServices"
-								:can-create="true"
-								:can-edit="true"
-								:can-delete="true"
+								:can-create="canManageOrCreateService"
+								:can-edit="canManageOrEditService"
+								:can-delete="canManageOrDeleteService"
 								@refresh="loadServices"
 							/>
 						</div>
@@ -341,11 +343,12 @@
 						<!-- Categories Tab -->
 						<div v-if="activeTab === 'categories'">
 							<ServiceCategoriesManager
+								:company-id="companyId"
 								:categories="categories"
 								:loading="loadingCategories"
-								:can-create="true"
-								:can-edit="true"
-								:can-delete="true"
+								:can-create="canManageCategories"
+								:can-edit="canManageCategories"
+								:can-delete="canManageCategories"
 								@refresh="loadCategories"
 							/>
 						</div>
@@ -362,6 +365,7 @@ import { useRouter } from "vue-router";
 import { useServices } from "@/composables/useServices";
 import { useAuthStore } from "@/stores/auth.store";
 import { useToast } from "@/composables/useToast";
+import { usePermissions } from "@/composables/usePermissions";
 import { formatCurrency } from "@/utils/formatters";
 import ServiceCategoriesManager from "@/components/services/ServiceCategoriesManager.vue";
 import CompanyServicesManager from "@/components/services/CompanyServicesManager.vue";
@@ -371,9 +375,24 @@ const authStore = useAuthStore();
 const { showError } = useToast();
 
 const {
-	fetchMyCompanyServices,
-	fetchServiceCategories,
-} = useServices();
+	canCreateService,
+	canEditService,
+	canDeleteService,
+	canManageServices,
+	canManageCategories,
+} = usePermissions();
+
+const canManageOrCreateService = computed(
+	() => canManageServices.value || canCreateService.value,
+);
+const canManageOrEditService = computed(
+	() => canManageServices.value || canEditService.value,
+);
+const canManageOrDeleteService = computed(
+	() => canManageServices.value || canDeleteService.value,
+);
+
+const { fetchMyCompanyServices, fetchMyCompanyCategories } = useServices();
 
 // State
 const loading = ref(false);
@@ -432,7 +451,7 @@ const loadServices = async () => {
 const loadCategories = async () => {
 	loadingCategories.value = true;
 	try {
-		const result = await fetchServiceCategories();
+		const result = await fetchMyCompanyCategories();
 		if (result.success) {
 			categories.value = result.data;
 		} else {

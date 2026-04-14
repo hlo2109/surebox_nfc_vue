@@ -251,11 +251,13 @@
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuth, useToast } from "@/composables";
+import { useAuthStore } from "@/stores/auth.store";
 import Checkbox from "primevue/checkbox";
 const { showSuccess, showError, showWarning, showInfo, showToast } = useToast();
 
 const router = useRouter();
 const { login, state: authState } = useAuth();
+const authStore = useAuthStore();
 
 const email = ref("");
 const password = ref("");
@@ -280,8 +282,17 @@ async function handleLogin() {
 		});
 
 		if (result.success) {
-			const redirect = router.currentRoute.value.query.redirect || "/";
-			router.push(redirect);
+			const redirect = router.currentRoute.value.query.redirect;
+			if (redirect) {
+				router.push(redirect);
+			} else {
+				const user = authStore.state.user;
+				const hasCompany =
+					user?.companies?.length > 0 ||
+					!!user?.company_id ||
+					!!user?.companyId;
+				router.push(hasCompany ? "/my-company" : "/services");
+			}
 		} else {
 			loginError.value =
 				result.error || "Login failed. Please check your credentials.";

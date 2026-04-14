@@ -84,14 +84,21 @@ export const useAuth = () => {
 				throw new Error('No access token received from server');
 			}
 
-			// Store auth data
+			// Store auth data (tokens + basic user info from login response)
 			authStore.setAuthData({
 				accessToken: accessToken,
 				refreshToken: refreshToken,
 				user: user,
 			});
 
-			const userName = user.name || user.username || user.email || 'User';
+			// Immediately fetch the full user profile so that the roles &
+			// permissions[] array from the API are stored before any page renders.
+			await getCurrentUser().catch(() => {
+				// Non-fatal: login still succeeds with whatever the login
+				// response contained. Permissions will be fetched on next mount.
+			});
+
+			const userName = authStore.state.user?.name || user.name || user.username || user.email || 'User';
 			toast.showSuccess(`Welcome back, ${userName}!`);
 			return { success: true, data: authData };
 		} catch (error) {

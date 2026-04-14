@@ -28,28 +28,43 @@ const hasNfcTags = computed(() => state.nfcTags.length > 0);
 
 // Actions
 const setNfcTags = (tags) => {
-	state.nfcTags = tags;
+	// Deduplicate by the best available identifier (uuid → id → code).
+	const seen = new Set();
+	state.nfcTags = tags.filter(tag => {
+		const key = String(tag.uuid ?? tag.id ?? tag.code);
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
 };
 
 const addNfcTag = (tag) => {
-	state.nfcTags.push(tag);
+	// Avoid pushing a record that is already in the list (e.g. when the API
+	// returns the same item for a duplicate submit due to a uniqueness constraint).
+	const tagKey = String(tag.uuid ?? tag.id ?? tag.code);
+	const exists = state.nfcTags.some(t => String(t.uuid ?? t.id ?? t.code) === tagKey);
+	if (!exists) {
+		state.nfcTags.push(tag);
+	}
 };
 
 const updateNfcTag = (updatedTag) => {
-	const index = state.nfcTags.findIndex(tag => tag.id === updatedTag.id);
+	const updatedKey = String(updatedTag.uuid ?? updatedTag.id ?? updatedTag.code);
+	const index = state.nfcTags.findIndex(tag => String(tag.uuid ?? tag.id ?? tag.code) === updatedKey);
 	if (index !== -1) {
 		state.nfcTags[index] = updatedTag;
 	}
-	// Update current NFC if it's the same one
-	if (state.currentNfc?.id === updatedTag.id) {
+	if (String(state.currentNfc?.uuid ?? state.currentNfc?.id ?? state.currentNfc?.code) === updatedKey) {
 		state.currentNfc = updatedTag;
 	}
 };
 
 const removeNfcTag = (tagId) => {
-	state.nfcTags = state.nfcTags.filter(tag => tag.id !== tagId);
-	// Clear current NFC if it's the same one
-	if (state.currentNfc?.id === tagId) {
+	// Accepts uuid, numeric id, or code — whichever the caller provides.
+	state.nfcTags = state.nfcTags.filter(
+		tag => String(tag.uuid ?? tag.id ?? tag.code) !== String(tagId)
+	);
+	if (String(state.currentNfc?.uuid ?? state.currentNfc?.id ?? state.currentNfc?.code) === String(tagId)) {
 		state.currentNfc = null;
 	}
 };
@@ -75,7 +90,7 @@ const clearError = () => {
 };
 
 const getNfcById = (id) => {
-	return state.nfcTags.find(tag => tag.id === id);
+	return state.nfcTags.find(tag => (tag.uuid ?? tag.id ?? tag.code) === id);
 };
 
 const getNfcByCode = (code) => {

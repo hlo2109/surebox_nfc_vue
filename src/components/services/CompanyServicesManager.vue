@@ -34,7 +34,12 @@
 
 		<!-- Filters & Search -->
 		<div
-			v-if="services.length > 0 || searchQuery || selectedCategory || selectedStatus"
+			v-if="
+				services.length > 0 ||
+				searchQuery ||
+				selectedCategory ||
+				selectedStatus
+			"
 			class="bg-white rounded-lg border border-gray-200 p-4 mb-6"
 		>
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -68,9 +73,9 @@
 				>
 					<option :value="null">All Categories</option>
 					<option
-						v-for="category in categories"
-						:key="category.id"
-						:value="category.id"
+						v-for="(category, index) in categories"
+						:key="index"
+						:value="category.uuid"
 					>
 						{{ category.name }}
 					</option>
@@ -104,7 +109,13 @@
 
 		<!-- Empty State -->
 		<div
-			v-else-if="!loading && services.length === 0 && !searchQuery && !selectedCategory && !selectedStatus"
+			v-else-if="
+				!loading &&
+				services.length === 0 &&
+				!searchQuery &&
+				!selectedCategory &&
+				!selectedStatus
+			"
 			class="text-center py-12 bg-white rounded-xl border border-gray-200"
 		>
 			<svg
@@ -187,8 +198,8 @@
 		>
 			<div
 				v-for="service in filteredServices"
-				:key="service.id"
-				class="bg-white rounded-lg border border-gray-200 hover:border-[#0D65AE] transition-all overflow-hidden"
+				:key="service.uuid"
+				class="bg-white rounded-lg border border-gray-200 hover:border-[#0D65AE] transition-all"
 			>
 				<!-- Service Header -->
 				<div class="p-4">
@@ -202,10 +213,10 @@
 							<div class="flex items-center gap-2 flex-wrap">
 								<!-- Category Badge -->
 								<span
-									v-if="getCategoryName(service.categoryId)"
+									v-if="service.categoryName"
 									class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
 								>
-									{{ getCategoryName(service.categoryId) }}
+									{{ service.categoryName }}
 								</span>
 								<!-- Status Badge -->
 								<span
@@ -220,7 +231,7 @@
 						<!-- Actions Dropdown -->
 						<div v-if="canEdit || canDelete" class="relative ml-2">
 							<button
-								@click="toggleServiceMenu(service.id)"
+								@click.stop="toggleServiceMenu(service.uuid)"
 								class="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors"
 							>
 								<svg
@@ -240,9 +251,9 @@
 
 							<!-- Dropdown Menu -->
 							<div
-								v-if="activeServiceMenu === service.id"
-								v-click-outside="closeServiceMenu"
-								class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10"
+								v-if="activeServiceMenu === service.uuid"
+								class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50"
+								@click.stop
 							>
 								<button
 									@click="viewService(service)"
@@ -338,7 +349,7 @@
 								/>
 							</svg>
 							<span class="font-semibold text-gray-900">
-								{{ formatPrice(service.price) }}
+								{{ formatPrice(service.basePrice) }}
 							</span>
 						</div>
 						<div
@@ -368,283 +379,175 @@
 		</div>
 
 		<!-- Create/Edit Dialog -->
-		<div
-			v-if="showDialog"
-			class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-			@click.self="closeDialog"
+		<Dialog
+			v-model:visible="showDialog"
+			:modal="true"
+			:draggable="false"
+			:style="{ width: '90vw', maxWidth: '640px' }"
+			:pt="{
+				root: { class: 'rounded-xl shadow-2xl' },
+				header: { class: 'border-b border-gray-200 px-6 py-4' },
+				content: { class: 'px-6 py-4' },
+			}"
 		>
-			<div
-				class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-			>
-				<div
-					class="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10"
-				>
-					<h3 class="text-lg font-semibold text-gray-900">
-						{{ editingService ? "Edit Service" : "Add Service" }}
-					</h3>
-					<button
-						@click="closeDialog"
-						class="text-gray-400 hover:text-gray-600 transition-colors"
+			<template #header>
+				<h3 class="text-lg font-semibold text-gray-900">
+					{{ editingService ? "Edit Service" : "Add Service" }}
+				</h3>
+			</template>
+
+			<form @submit.prevent="submitService" class="space-y-4 py-2">
+				<!-- Service Name -->
+				<div>
+					<label
+						for="service-name"
+						class="block text-sm font-semibold text-gray-900 mb-2"
 					>
-						<svg
-							class="w-5 h-5"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M6 18L18 6M6 6l12 12"
-							/>
-						</svg>
-					</button>
+						Service Name *
+					</label>
+					<input
+						id="service-name"
+						v-model="serviceForm.name"
+						type="text"
+						required
+						class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all"
+						placeholder="e.g., Standard Cleaning"
+					/>
+					<p v-if="errors.name" class="mt-1 text-sm text-red-600">
+						{{ errors.name }}
+					</p>
 				</div>
 
-				<form @submit.prevent="submitService" class="p-6 space-y-4">
-					<!-- Service Name -->
+				<!-- Category -->
+				<div>
+					<label
+						for="service-category"
+						class="block text-sm font-semibold text-gray-900 mb-2"
+					>
+						Category *
+					</label>
+					<select
+						id="service-category"
+						v-model="serviceForm.categoryId"
+						required
+						class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all"
+					>
+						<option :value="null" disabled>
+							Select a category
+						</option>
+						<option
+							v-for="(category, index) in categories"
+							:key="index"
+							:value="category.uuid"
+						>
+							{{ category.name }}
+						</option>
+					</select>
+					<p
+						v-if="errors.categoryId"
+						class="mt-1 text-sm text-red-600"
+					>
+						{{ errors.categoryId }}
+					</p>
+				</div>
+
+				<!-- Description -->
+				<div>
+					<label
+						for="service-description"
+						class="block text-sm font-semibold text-gray-900 mb-2"
+					>
+						Description
+					</label>
+					<textarea
+						id="service-description"
+						v-model="serviceForm.description"
+						rows="4"
+						class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all resize-none"
+						placeholder="Describe your service in detail"
+					></textarea>
+				</div>
+
+				<!-- Price and Duration -->
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<div>
 						<label
-							for="service-name"
+							for="service-price"
 							class="block text-sm font-semibold text-gray-900 mb-2"
 						>
-							Service Name *
+							Price ($) *
 						</label>
 						<input
-							id="service-name"
-							v-model="serviceForm.name"
-							type="text"
+							id="service-price"
+							v-model.number="serviceForm.price"
+							type="number"
+							step="0.01"
+							min="0"
 							required
 							class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all"
-							placeholder="e.g., Standard Cleaning"
+							placeholder="0.00"
 						/>
-						<p v-if="errors.name" class="mt-1 text-sm text-red-600">
-							{{ errors.name }}
-						</p>
-					</div>
-
-					<!-- Category -->
-					<div>
-						<label
-							for="service-category"
-							class="block text-sm font-semibold text-gray-900 mb-2"
-						>
-							Category *
-						</label>
-						<select
-							id="service-category"
-							v-model="serviceForm.categoryId"
-							required
-							class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all"
-						>
-							<option :value="null" disabled>
-								Select a category
-							</option>
-							<option
-								v-for="category in categories"
-								:key="category.id"
-								:value="category.id"
-							>
-								{{ category.name }}
-							</option>
-						</select>
 						<p
-							v-if="errors.categoryId"
+							v-if="errors.price"
 							class="mt-1 text-sm text-red-600"
 						>
-							{{ errors.categoryId }}
+							{{ errors.price }}
 						</p>
 					</div>
-
-					<!-- Description -->
 					<div>
 						<label
-							for="service-description"
+							for="service-duration"
 							class="block text-sm font-semibold text-gray-900 mb-2"
 						>
-							Description
+							Duration (minutes)
 						</label>
-						<textarea
-							id="service-description"
-							v-model="serviceForm.description"
-							rows="4"
-							class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all resize-none"
-							placeholder="Describe your service in detail"
-						></textarea>
-					</div>
-
-					<!-- Price and Duration -->
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<!-- Price -->
-						<div>
-							<label
-								for="service-price"
-								class="block text-sm font-semibold text-gray-900 mb-2"
-							>
-								Price ($) *
-							</label>
-							<input
-								id="service-price"
-								v-model.number="serviceForm.price"
-								type="number"
-								step="0.01"
-								min="0"
-								required
-								class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all"
-								placeholder="0.00"
-							/>
-							<p
-								v-if="errors.price"
-								class="mt-1 text-sm text-red-600"
-							>
-								{{ errors.price }}
-							</p>
-						</div>
-
-						<!-- Duration -->
-						<div>
-							<label
-								for="service-duration"
-								class="block text-sm font-semibold text-gray-900 mb-2"
-							>
-								Duration (minutes)
-							</label>
-							<input
-								id="service-duration"
-								v-model.number="serviceForm.duration"
-								type="number"
-								min="0"
-								class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all"
-								placeholder="e.g., 60"
-							/>
-						</div>
-					</div>
-
-					<!-- Status -->
-					<div>
-						<label
-							for="service-status"
-							class="block text-sm font-semibold text-gray-900 mb-2"
-						>
-							Status
-						</label>
-						<select
-							id="service-status"
-							v-model="serviceForm.status"
+						<input
+							id="service-duration"
+							v-model.number="serviceForm.duration"
+							type="number"
+							min="0"
 							class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all"
-						>
-							<option value="active">Active</option>
-							<option value="inactive">Inactive</option>
-							<option value="draft">Draft</option>
-						</select>
-					</div>
-
-					<!-- Actions -->
-					<div class="flex gap-3 pt-4 sticky bottom-0 bg-white">
-						<button
-							type="button"
-							@click="closeDialog"
-							:disabled="saving"
-							class="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 transition-all disabled:opacity-50"
-						>
-							Cancel
-						</button>
-						<button
-							type="submit"
-							:disabled="saving"
-							class="flex-1 px-4 py-2 text-sm font-medium bg-[#0D65AE] text-white rounded-lg hover:bg-[#0a4f87] focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-						>
-							<svg
-								v-if="saving"
-								class="animate-spin w-4 h-4"
-								fill="none"
-								viewBox="0 0 24 24"
-							>
-								<circle
-									class="opacity-25"
-									cx="12"
-									cy="12"
-									r="10"
-									stroke="currentColor"
-									stroke-width="4"
-								></circle>
-								<path
-									class="opacity-75"
-									fill="currentColor"
-									d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-								></path>
-							</svg>
-							{{
-								saving
-									? "Saving..."
-									: editingService
-									? "Update Service"
-									: "Add Service"
-							}}
-						</button>
-					</div>
-				</form>
-			</div>
-		</div>
-
-		<!-- Delete Confirmation Dialog -->
-		<div
-			v-if="showDeleteDialog"
-			class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-			@click.self="closeDeleteDialog"
-		>
-			<div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-				<div class="flex items-center gap-4 mb-4">
-					<div
-						class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0"
-					>
-						<svg
-							class="w-6 h-6 text-red-600"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-							/>
-						</svg>
-					</div>
-					<div>
-						<h3 class="text-lg font-semibold text-gray-900">
-							Delete Service
-						</h3>
-						<p class="text-sm text-gray-600 mt-1">
-							Are you sure you want to delete "{{
-								serviceToDelete?.name
-							}}"?
-						</p>
+							placeholder="e.g., 60"
+						/>
 					</div>
 				</div>
 
-				<p class="text-sm text-gray-600 mb-6">
-					This action cannot be undone. All bookings and related data
-					will be affected.
-				</p>
+				<!-- Status -->
+				<div>
+					<label
+						for="service-status"
+						class="block text-sm font-semibold text-gray-900 mb-2"
+					>
+						Status
+					</label>
+					<select
+						id="service-status"
+						v-model="serviceForm.status"
+						class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all"
+					>
+						<option value="active">Active</option>
+						<option value="inactive">Inactive</option>
+						<option value="draft">Draft</option>
+					</select>
+				</div>
 
-				<div class="flex gap-3">
+				<!-- Actions -->
+				<div class="flex gap-3 pt-4">
 					<button
-						@click="closeDeleteDialog"
-						:disabled="deleting"
-						class="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-50"
+						type="button"
+						@click="closeDialog"
+						:disabled="saving"
+						class="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 transition-all disabled:opacity-50"
 					>
 						Cancel
 					</button>
 					<button
-						@click="handleDelete"
-						:disabled="deleting"
-						class="flex-1 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+						type="submit"
+						:disabled="saving"
+						class="flex-1 px-4 py-2 text-sm font-medium bg-[#0D65AE] text-white rounded-lg hover:bg-[#0a4f87] focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
 					>
 						<svg
-							v-if="deleting"
+							v-if="saving"
 							class="animate-spin w-4 h-4"
 							fill="none"
 							viewBox="0 0 24 24"
@@ -663,33 +566,37 @@
 								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
 							></path>
 						</svg>
-						{{ deleting ? "Deleting..." : "Delete Service" }}
+						{{
+							saving
+								? "Saving..."
+								: editingService
+									? "Update Service"
+									: "Add Service"
+						}}
 					</button>
 				</div>
-			</div>
-		</div>
+			</form>
+		</Dialog>
 
-		<!-- View Service Dialog -->
-		<div
-			v-if="showViewDialog"
-			class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-			@click.self="closeViewDialog"
+		<!-- Delete Confirmation Dialog -->
+		<Dialog
+			v-model:visible="showDeleteDialog"
+			:modal="true"
+			:draggable="false"
+			:style="{ width: '90vw', maxWidth: '480px' }"
+			:pt="{
+				root: { class: 'rounded-xl shadow-2xl' },
+				header: { class: 'border-b border-gray-200 px-6 py-4' },
+				content: { class: 'px-6 py-5' },
+			}"
 		>
-			<div
-				class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-			>
-				<div
-					class="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10"
-				>
-					<h3 class="text-lg font-semibold text-gray-900">
-						Service Details
-					</h3>
-					<button
-						@click="closeViewDialog"
-						class="text-gray-400 hover:text-gray-600 transition-colors"
+			<template #header>
+				<div class="flex items-center gap-3">
+					<div
+						class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center"
 					>
 						<svg
-							class="w-5 h-5"
+							class="w-5 h-5 text-red-600"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -698,114 +605,183 @@
 								stroke-linecap="round"
 								stroke-linejoin="round"
 								stroke-width="2"
-								d="M6 18L18 6M6 6l12 12"
+								d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
 							/>
 						</svg>
-					</button>
-				</div>
-
-				<div v-if="viewingService" class="p-6 space-y-6">
-					<!-- Header -->
-					<div>
-						<h2 class="text-2xl font-bold text-gray-900 mb-2">
-							{{ viewingService.name }}
-						</h2>
-						<div class="flex items-center gap-2 flex-wrap">
-							<span
-								v-if="getCategoryName(viewingService.categoryId)"
-								class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
-							>
-								{{ getCategoryName(viewingService.categoryId) }}
-							</span>
-							<span
-								:class="getStatusClass(viewingService.status)"
-								class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
-							>
-								{{ formatStatus(viewingService.status) }}
-							</span>
-						</div>
 					</div>
-
-					<!-- Description -->
-					<div v-if="viewingService.description">
-						<h4 class="text-sm font-semibold text-gray-900 mb-2">
-							Description
-						</h4>
-						<p class="text-gray-700">
-							{{ viewingService.description }}
+					<div>
+						<h3 class="text-lg font-semibold text-gray-900">
+							Delete Service
+						</h3>
+						<p class="text-sm text-gray-500">
+							This action cannot be undone
 						</p>
 					</div>
+				</div>
+			</template>
 
-					<!-- Pricing & Duration -->
-					<div class="grid grid-cols-2 gap-4">
-						<div>
-							<h4
-								class="text-sm font-semibold text-gray-900 mb-2"
-							>
-								Price
-							</h4>
-							<p class="text-2xl font-bold text-[#0D65AE]">
-								{{ formatPrice(viewingService.price) }}
-							</p>
-						</div>
-						<div v-if="viewingService.duration">
-							<h4
-								class="text-sm font-semibold text-gray-900 mb-2"
-							>
-								Duration
-							</h4>
-							<p class="text-2xl font-bold text-[#0D65AE]">
-								{{ formatDuration(viewingService.duration) }}
-							</p>
-						</div>
-					</div>
+			<div class="py-2">
+				<p class="text-sm text-gray-700">
+					Are you sure you want to delete
+					<strong class="font-semibold text-gray-900">{{
+						serviceToDelete?.name
+					}}</strong
+					>?
+				</p>
+				<p class="text-sm text-red-600 mt-2">
+					All bookings and related data will be affected.
+				</p>
+			</div>
 
-					<!-- Metadata -->
-					<div class="pt-4 border-t border-gray-200 space-y-2">
-						<div
-							v-if="viewingService.created_at"
-							class="flex items-center justify-between text-sm"
-						>
-							<span class="text-gray-600">Created</span>
-							<span class="text-gray-900">
-								{{ formatDate(viewingService.created_at) }}
-							</span>
-						</div>
-						<div
-							v-if="viewingService.updated_at"
-							class="flex items-center justify-between text-sm"
-						>
-							<span class="text-gray-600">Last Updated</span>
-							<span class="text-gray-900">
-								{{ formatDate(viewingService.updated_at) }}
-							</span>
-						</div>
-					</div>
+			<div class="flex gap-3 pt-4 pb-2">
+				<button
+					@click="closeDeleteDialog"
+					:disabled="deleting"
+					class="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all disabled:opacity-50"
+				>
+					Cancel
+				</button>
+				<button
+					@click="handleDelete"
+					:disabled="deleting"
+					class="flex-1 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+				>
+					<svg
+						v-if="deleting"
+						class="animate-spin w-4 h-4"
+						fill="none"
+						viewBox="0 0 24 24"
+					>
+						<circle
+							class="opacity-25"
+							cx="12"
+							cy="12"
+							r="10"
+							stroke="currentColor"
+							stroke-width="4"
+						></circle>
+						<path
+							class="opacity-75"
+							fill="currentColor"
+							d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+						></path>
+					</svg>
+					{{ deleting ? "Deleting..." : "Delete Service" }}
+				</button>
+			</div>
+		</Dialog>
 
-					<!-- Actions -->
-					<div class="flex gap-3 pt-4">
-						<button
-							v-if="canEdit"
-							@click="editFromView"
-							class="flex-1 px-4 py-2 text-sm font-medium border border-[#0D65AE] text-[#0D65AE] rounded-lg hover:bg-[#0D65AE] hover:text-white transition-all"
+		<!-- View Service Dialog -->
+		<Dialog
+			v-model:visible="showViewDialog"
+			:modal="true"
+			:draggable="false"
+			:style="{ width: '90vw', maxWidth: '640px' }"
+			:pt="{
+				root: { class: 'rounded-xl shadow-2xl' },
+				header: { class: 'border-b border-gray-200 px-6 py-4' },
+				content: { class: 'px-6 py-6' },
+			}"
+		>
+			<template #header>
+				<div v-if="viewingService">
+					<h3 class="text-lg font-semibold text-gray-900">
+						{{ viewingService.name }}
+					</h3>
+					<div class="flex items-center gap-2 flex-wrap mt-1">
+						<span
+							v-if="viewingService?.categoryName"
+							class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
 						>
-							Edit Service
-						</button>
-						<button
-							@click="closeViewDialog"
-							class="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all"
+							{{ viewingService?.categoryName }}
+						</span>
+						<span
+							:class="getStatusClass(viewingService.status)"
+							class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
 						>
-							Close
-						</button>
+							{{ formatStatus(viewingService.status) }}
+						</span>
 					</div>
 				</div>
+			</template>
+
+			<div v-if="viewingService" class="space-y-6 py-2">
+				<!-- Description -->
+				<div v-if="viewingService.description">
+					<h4 class="text-sm font-semibold text-gray-900 mb-2">
+						Description
+					</h4>
+					<p class="text-gray-700">
+						{{ viewingService.description }}
+					</p>
+				</div>
+
+				<!-- Pricing & Duration -->
+				<div class="grid grid-cols-2 gap-4">
+					<div>
+						<h4 class="text-sm font-semibold text-gray-900 mb-2">
+							Price
+						</h4>
+						<p class="text-2xl font-bold text-[#0D65AE]">
+							{{ formatPrice(viewingService.basePrice) }}
+						</p>
+					</div>
+					<div v-if="viewingService.duration">
+						<h4 class="text-sm font-semibold text-gray-900 mb-2">
+							Duration
+						</h4>
+						<p class="text-2xl font-bold text-[#0D65AE]">
+							{{ formatDuration(viewingService.duration) }}
+						</p>
+					</div>
+				</div>
+
+				<!-- Metadata -->
+				<div class="pt-4 border-t border-gray-200 space-y-2">
+					<div
+						v-if="viewingService.created_at"
+						class="flex items-center justify-between text-sm"
+					>
+						<span class="text-gray-600">Created</span>
+						<span class="text-gray-900">{{
+							formatDate(viewingService.created_at)
+						}}</span>
+					</div>
+					<div
+						v-if="viewingService.updated_at"
+						class="flex items-center justify-between text-sm"
+					>
+						<span class="text-gray-600">Last Updated</span>
+						<span class="text-gray-900">{{
+							formatDate(viewingService.updated_at)
+						}}</span>
+					</div>
+				</div>
+
+				<!-- Actions -->
+				<div class="flex gap-3 pt-2">
+					<button
+						v-if="canEdit"
+						@click="editFromView"
+						class="flex-1 px-4 py-2 text-sm font-medium border border-[#0D65AE] text-[#0D65AE] rounded-lg hover:bg-[#0D65AE] hover:text-white transition-all"
+					>
+						Edit Service
+					</button>
+					<button
+						@click="closeViewDialog"
+						class="flex-1 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all"
+					>
+						Close
+					</button>
+				</div>
 			</div>
-		</div>
+		</Dialog>
 	</div>
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import Dialog from "primevue/dialog";
 import { useServices } from "@/composables/useServices";
 import {
 	formatCurrency,
@@ -816,7 +792,7 @@ import {
 
 const props = defineProps({
 	companyId: {
-		type: Number,
+		type: String,
 		required: true,
 	},
 	services: {
@@ -833,15 +809,15 @@ const props = defineProps({
 	},
 	canCreate: {
 		type: Boolean,
-		default: true,
+		default: false,
 	},
 	canEdit: {
 		type: Boolean,
-		default: true,
+		default: false,
 	},
 	canDelete: {
 		type: Boolean,
-		default: true,
+		default: false,
 	},
 });
 
@@ -852,11 +828,7 @@ const emit = defineEmits([
 	"service-deleted",
 ]);
 
-const {
-	createCompanyService,
-	updateCompanyService,
-	deleteCompanyService,
-} = useServices();
+const { createMyCompanyService, updateService, deleteService } = useServices();
 
 // State
 const showDialog = ref(false);
@@ -893,21 +865,21 @@ const filteredServices = computed(() => {
 		filtered = filtered.filter(
 			(service) =>
 				service.name?.toLowerCase().includes(query) ||
-				service.description?.toLowerCase().includes(query)
+				service.description?.toLowerCase().includes(query),
 		);
 	}
 
 	// Filter by category
 	if (selectedCategory.value) {
 		filtered = filtered.filter(
-			(service) => service.categoryId === selectedCategory.value
+			(service) => service.categoryId === selectedCategory.value,
 		);
 	}
 
 	// Filter by status
 	if (selectedStatus.value) {
 		filtered = filtered.filter(
-			(service) => service.status === selectedStatus.value
+			(service) => service.status === selectedStatus.value,
 		);
 	}
 
@@ -960,9 +932,9 @@ const openEditDialog = (service) => {
 	editingService.value = service;
 	serviceForm.value = {
 		name: service.name || "",
-		categoryId: service.categoryId || null,
+		categoryId: null,
 		description: service.description || "",
-		price: service.price || null,
+		price: service.basePrice || null,
 		duration: service.duration || null,
 		status: service.status || "active",
 	};
@@ -1015,27 +987,33 @@ const submitService = async () => {
 	saving.value = true;
 
 	try {
-		const serviceData = {
-			name: serviceForm.value.name.trim(),
-			categoryId: serviceForm.value.categoryId,
-			description: serviceForm.value.description.trim() || undefined,
-			price: parseFloat(serviceForm.value.price),
-			duration: serviceForm.value.duration || undefined,
-			status: serviceForm.value.status,
-		};
-
 		let result;
 		if (editingService.value) {
-			result = await updateCompanyService(
-				props.companyId,
-				editingService.value.id,
-				serviceData
+			const serviceData = {
+				name: serviceForm.value.name.trim(),
+				categoryId: serviceForm.value.categoryId,
+				description: serviceForm.value.description.trim() || undefined,
+				price: parseFloat(serviceForm.value.price),
+				duration: serviceForm.value.duration || undefined,
+				status: serviceForm.value.status,
+			};
+			result = await updateService(
+				editingService.value.uuid,
+				serviceData,
 			);
 			if (result.success) {
 				emit("service-updated", result.data);
 			}
 		} else {
-			result = await createCompanyService(props.companyId, serviceData);
+			const serviceData = {
+				name: serviceForm.value.name.trim(),
+				categoryId: serviceForm.value.categoryId,
+				description: serviceForm.value.description.trim() || undefined,
+				basePrice: parseFloat(serviceForm.value.price),
+				priceType: "fixed",
+				duration: serviceForm.value.duration || undefined,
+			};
+			result = await createMyCompanyService(serviceData);
 			if (result.success) {
 				emit("service-created", result.data);
 			}
@@ -1069,13 +1047,10 @@ const handleDelete = async () => {
 	deleting.value = true;
 
 	try {
-		const result = await deleteCompanyService(
-			props.companyId,
-			serviceToDelete.value.id
-		);
+		const result = await deleteService(serviceToDelete.value.uuid);
 
 		if (result.success) {
-			emit("service-deleted", serviceToDelete.value.id);
+			emit("service-deleted", serviceToDelete.value.uuid);
 			closeDeleteDialog();
 			emit("refresh");
 		}
@@ -1114,20 +1089,9 @@ const closeServiceMenu = () => {
 	activeServiceMenu.value = null;
 };
 
-// Click outside directive
-const vClickOutside = {
-	mounted(el, binding) {
-		el.clickOutsideEvent = (event) => {
-			if (!(el === event.target || el.contains(event.target))) {
-				binding.value(event);
-			}
-		};
-		document.addEventListener("click", el.clickOutsideEvent);
-	},
-	unmounted(el) {
-		document.removeEventListener("click", el.clickOutsideEvent);
-	},
-};
+// Close menu when clicking anywhere outside
+onMounted(() => document.addEventListener("click", closeServiceMenu));
+onUnmounted(() => document.removeEventListener("click", closeServiceMenu));
 </script>
 
 <style scoped>

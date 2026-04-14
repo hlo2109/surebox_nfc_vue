@@ -147,7 +147,10 @@
 								</p>
 							</div>
 						</div>
-						<div v-if="service.duration" class="flex items-center gap-3">
+						<div
+							v-if="service.duration"
+							class="flex items-center gap-3"
+						>
 							<div
 								class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center"
 							>
@@ -198,7 +201,9 @@
 						</svg>
 						Description
 					</h2>
-					<p class="text-gray-700 leading-relaxed whitespace-pre-wrap">
+					<p
+						class="text-gray-700 leading-relaxed whitespace-pre-wrap"
+					>
 						{{ service.description }}
 					</p>
 				</div>
@@ -245,7 +250,9 @@
 							</svg>
 						</div>
 						<div class="flex-1">
-							<h3 class="text-lg font-semibold text-gray-900 mb-1">
+							<h3
+								class="text-lg font-semibold text-gray-900 mb-1"
+							>
 								{{ service.company.name }}
 							</h3>
 							<div class="space-y-2 text-sm text-gray-600">
@@ -353,7 +360,9 @@
 							v-if="service.updated_at"
 							class="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg"
 						>
-							<span class="text-sm text-gray-600">Last Updated</span>
+							<span class="text-sm text-gray-600"
+								>Last Updated</span
+							>
 							<span class="text-sm font-medium text-gray-900">
 								{{ formatDate(service.updated_at) }}
 							</span>
@@ -362,7 +371,9 @@
 							v-if="service.id"
 							class="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg"
 						>
-							<span class="text-sm text-gray-600">Service ID</span>
+							<span class="text-sm text-gray-600"
+								>Service ID</span
+							>
 							<span class="text-sm font-medium text-gray-900">
 								#{{ service.id }}
 							</span>
@@ -424,6 +435,7 @@ import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useServices } from "@/composables/useServices";
 import { useToast } from "@/composables/useToast";
+import { useAuthStore } from "@/stores/auth.store";
 import {
 	formatCurrency,
 	formatDuration,
@@ -435,6 +447,7 @@ const route = useRoute();
 const router = useRouter();
 const { fetchService, getCategoryById } = useServices();
 const { showInfo } = useToast();
+const authStore = useAuthStore();
 
 // State
 const loading = ref(false);
@@ -499,8 +512,15 @@ const goBack = () => {
 };
 
 const bookService = () => {
-	showInfo("Booking functionality coming soon!");
-	// TODO: Implement booking functionality
+	const serviceId = service.value?.uuid || service.value?.id;
+	if (!serviceId) {
+		showInfo("Service information not available");
+		return;
+	}
+	router.push({
+		name: "CreateRequest",
+		query: { serviceId: String(serviceId) },
+	});
 };
 
 const contactCompany = () => {

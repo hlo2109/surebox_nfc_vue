@@ -84,7 +84,9 @@
 										d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
 									></path>
 								</svg>
-								<span>{{ isSaving ? "Saving..." : "Save Changes" }}</span>
+								<span>{{
+									isSaving ? "Saving..." : "Save Changes"
+								}}</span>
 							</button>
 						</template>
 					</div>
@@ -106,7 +108,9 @@
 							>
 								Account Status
 							</p>
-							<h3 class="text-lg sm:text-xl font-bold text-green-600">
+							<h3
+								class="text-lg sm:text-xl font-bold text-green-600"
+							>
 								Active
 							</h3>
 							<p
@@ -157,7 +161,9 @@
 							>
 								Member Since
 							</p>
-							<h3 class="text-lg sm:text-xl font-bold text-gray-900">
+							<h3
+								class="text-lg sm:text-xl font-bold text-gray-900"
+							>
 								{{ memberSince }}
 							</h3>
 							<p
@@ -208,7 +214,9 @@
 							>
 								Total Boxes
 							</p>
-							<h3 class="text-2xl sm:text-3xl font-bold text-gray-900">
+							<h3
+								class="text-2xl sm:text-3xl font-bold text-gray-900"
+							>
 								{{ totalBoxes }}
 							</h3>
 							<p
@@ -257,7 +265,9 @@
 							>
 								Total Requests
 							</p>
-							<h3 class="text-2xl sm:text-3xl font-bold text-gray-900">
+							<h3
+								class="text-2xl sm:text-3xl font-bold text-gray-900"
+							>
 								{{ totalRequests }}
 							</h3>
 							<p
@@ -458,58 +468,71 @@
 								/>
 							</div>
 
-							<!-- City, State, Zip -->
-							<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-								<div>
-									<label
-										class="block text-sm font-medium text-gray-700 mb-2"
-									>
-										City
-									</label>
-									<input
-										v-model="formData.city"
-										type="text"
-										:disabled="!isEditing"
-										class="block w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0D65AE] focus:border-transparent text-sm transition-all disabled:bg-gray-50 disabled:text-gray-500"
-									/>
+							<!-- Location: view mode – read-only text display -->
+							<template v-if="!isEditing">
+								<div
+									class="grid grid-cols-1 sm:grid-cols-3 gap-4"
+								>
+									<div>
+										<label
+											class="block text-sm font-medium text-gray-700 mb-2"
+										>
+											Country
+										</label>
+										<input
+											v-model="formData.country"
+											type="text"
+											disabled
+											class="block w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-500"
+										/>
+									</div>
+									<div>
+										<label
+											class="block text-sm font-medium text-gray-700 mb-2"
+										>
+											Department / State
+										</label>
+										<input
+											v-model="formData.state"
+											type="text"
+											disabled
+											class="block w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-500"
+										/>
+									</div>
+									<div>
+										<label
+											class="block text-sm font-medium text-gray-700 mb-2"
+										>
+											City
+										</label>
+										<input
+											v-model="formData.city"
+											type="text"
+											disabled
+											class="block w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-500"
+										/>
+									</div>
 								</div>
-								<div>
-									<label
-										class="block text-sm font-medium text-gray-700 mb-2"
-									>
-										State
-									</label>
-									<input
-										v-model="formData.state"
-										type="text"
-										:disabled="!isEditing"
-										class="block w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0D65AE] focus:border-transparent text-sm transition-all disabled:bg-gray-50 disabled:text-gray-500"
-									/>
-								</div>
-								<div>
-									<label
-										class="block text-sm font-medium text-gray-700 mb-2"
-									>
-										ZIP Code
-									</label>
-									<input
-										v-model="formData.zipCode"
-										type="text"
-										:disabled="!isEditing"
-										class="block w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0D65AE] focus:border-transparent text-sm transition-all disabled:bg-gray-50 disabled:text-gray-500"
-									/>
-								</div>
-							</div>
+							</template>
 
-							<!-- Country -->
+							<!-- Location: edit mode – cascading Country → Department → City -->
+							<LocationSelector
+								v-else
+								:initial-country-id="formData.countryId"
+								:initial-department-id="formData.departmentId"
+								:initial-city-id="formData.cityId"
+								@change="onLocationChange"
+							/>
+
+							<!-- ZIP Code (always shown) -->
 							<div>
 								<label
 									class="block text-sm font-medium text-gray-700 mb-2"
 								>
-									Country
+									ZIP Code
 								</label>
 								<input
-									v-model="formData.country"
+									v-model="formData.zipCode"
 									type="text"
 									:disabled="!isEditing"
 									class="block w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0D65AE] focus:border-transparent text-sm transition-all disabled:bg-gray-50 disabled:text-gray-500"
@@ -649,9 +672,11 @@
 								<h4 class="text-sm font-semibold mb-1">
 									Keep Your Profile Updated
 								</h4>
-								<p class="text-xs text-white/80 leading-relaxed">
-									Make sure your information is up to date for better
-									service delivery and communication.
+								<p
+									class="text-xs text-white/80 leading-relaxed"
+								>
+									Make sure your information is up to date for
+									better service delivery and communication.
 								</p>
 							</div>
 						</div>
@@ -664,6 +689,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
+import LocationSelector from "@/components/common/LocationSelector.vue";
 
 // State
 const isEditing = ref(false);
@@ -682,6 +708,10 @@ const formData = ref({
 	state: "",
 	zipCode: "",
 	country: "",
+	// Location IDs from the cascading selector
+	countryId: null,
+	departmentId: null,
+	cityId: null,
 	createdAt: null,
 });
 
@@ -732,7 +762,10 @@ const loadProfile = () => {
 				city: user.city || "",
 				state: user.state || "",
 				zipCode: user.zipCode || user.zip_code || "",
-				country: user.country || "USA",
+				country: user.country || "",
+				countryId: user.countryId || null,
+				departmentId: user.departmentId || null,
+				cityId: user.cityId || null,
 				createdAt: user.createdAt || user.created_at || new Date(),
 			};
 			originalData.value = { ...formData.value };
@@ -744,6 +777,16 @@ const loadProfile = () => {
 	// Load stats (mock data for now)
 	totalBoxes.value = 12;
 	totalRequests.value = 8;
+};
+
+// Updates all location-related fields when the user picks from the selector
+const onLocationChange = (location) => {
+	formData.value.countryId = location.countryId;
+	formData.value.country = location.countryName;
+	formData.value.departmentId = location.departmentId;
+	formData.value.state = location.departmentName;
+	formData.value.cityId = location.cityId;
+	formData.value.city = location.cityName;
 };
 
 const startEditing = () => {
@@ -775,6 +818,9 @@ const saveProfile = async () => {
 			user.state = formData.value.state;
 			user.zipCode = formData.value.zipCode;
 			user.country = formData.value.country;
+			user.countryId = formData.value.countryId;
+			user.departmentId = formData.value.departmentId;
+			user.cityId = formData.value.cityId;
 			localStorage.setItem("user", JSON.stringify(user));
 		}
 

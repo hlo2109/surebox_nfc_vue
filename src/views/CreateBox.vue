@@ -728,7 +728,8 @@ import { useNfcReader } from "@/composables/useNfcReader";
 import PhoneInput from "@/components/PhoneInput.vue";
 
 const router = useRouter();
-const { createNfcCode, loading: submitting } = useNfc();
+const { createNfcCode } = useNfc();
+const submitting = ref(false);
 const { showSuccess, showError, showWarning, showInfo, showToast } = useToast();
 const { canCreateNfc } = usePermissions();
 const {
@@ -972,6 +973,9 @@ function removeImage(index) {
 async function handleSubmit(e) {
 	e.preventDefault();
 
+	// Guard against double submission
+	if (submitting.value) return;
+
 	// Validation
 	if (!codebox_id.value.trim()) {
 		showToast("warn", "Validation Error", "Box ID is required");
@@ -999,17 +1003,22 @@ async function handleSubmit(e) {
 		description: description.value || undefined,
 	};
 
-	const success = await createNfcCode(payload);
+	submitting.value = true;
+	try {
+		const success = await createNfcCode(payload);
 
-	if (success) {
-		showToast(
-			"success",
-			"Box Created",
-			"Your new box has been registered successfully",
-		);
-		setTimeout(() => {
-			router.push("/mybox");
-		}, 1500);
+		if (success) {
+			showToast(
+				"success",
+				"Box Created",
+				"Your new box has been registered successfully",
+			);
+			setTimeout(() => {
+				router.push("/mybox");
+			}, 1500);
+		}
+	} finally {
+		submitting.value = false;
 	}
 }
 

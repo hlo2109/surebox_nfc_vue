@@ -77,7 +77,7 @@
 				<!-- Box Cards -->
 				<div
 					v-for="box in nfcCodes"
-					:key="box.id"
+					:key="box.uuid || box.id || box.code"
 					class="bg-white rounded-xl border border-gray-200 hover:border-[#0D65AE] transition-all duration-300 overflow-hidden group"
 				>
 					<div class="p-6">
@@ -249,7 +249,7 @@
 						<div class="flex gap-2">
 							<router-link
 								v-if="canEditNfc"
-								:to="`/edit-box/${box.id}`"
+								:to="`/edit-box/${box.uuid || box.id || box.code}`"
 								class="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-white bg-[#0D65AE] rounded-lg hover:bg-[#0D65AE]/90 transition-all border border-[#0D65AE]"
 							>
 								<svg
@@ -269,7 +269,11 @@
 							</router-link>
 							<div class="relative">
 								<button
-									@click="toggleDropdown(box.id)"
+									@click="
+										toggleDropdown(
+											box.uuid || box.id || box.code,
+										)
+									"
 									class="px-3 py-2 text-sm font-medium text-gray-700 bg-white rounded-lg hover:bg-gray-100 transition-all border border-gray-300"
 								>
 									<svg
@@ -288,7 +292,10 @@
 								</button>
 								<!-- Dropdown Menu -->
 								<div
-									v-if="activeDropdown === box.id"
+									v-if="
+										activeDropdown ===
+										(box.uuid || box.id || box.code)
+									"
 									class="absolute right-0 bottom-full mb-2 w-48 bg-white border border-gray-200 rounded-lg overflow-hidden z-10 shadow-lg"
 								>
 									<button
@@ -339,11 +346,17 @@
 									<button
 										v-if="canDeleteNfc"
 										@click="confirmDelete(box)"
-										:disabled="deleting === box.id"
+										:disabled="
+											deleting ===
+											(box.uuid || box.id || box.code)
+										"
 										class="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left disabled:opacity-50"
 									>
 										<svg
-											v-if="deleting !== box.id"
+											v-if="
+												deleting !==
+												(box.uuid || box.id || box.code)
+											"
 											class="w-4 h-4"
 											fill="none"
 											stroke="currentColor"
@@ -361,7 +374,8 @@
 											class="pi pi-spin pi-spinner"
 										></i>
 										{{
-											deleting === box.id
+											deleting ===
+											(box.uuid || box.id || box.code)
 												? "Deleting..."
 												: "Delete Box"
 										}}
@@ -521,17 +535,35 @@ async function confirmDelete(box) {
 		return;
 	}
 
-	deleting.value = box.id;
-	const success = await deleteNfcCode(box.id);
+	// DEBUG: log full box object and resolved key so we can see what the API receives
+	console.log(
+		"[confirmDelete] full box object:",
+		JSON.stringify(box, null, 2),
+	);
+	const boxKey = box.uuid || box.id || box.code;
+	console.log(
+		"[confirmDelete] resolved boxKey →",
+		boxKey,
+		"(type:",
+		typeof boxKey,
+		")",
+	);
+	deleting.value = boxKey;
+	const result = await deleteNfcCode(boxKey);
+	console.log("[confirmDelete] deleteNfcCode result:", result);
 	deleting.value = null;
 
-	if (success) {
+	if (result?.success) {
 		showToast(
 			"success",
 			"Box Deleted",
 			"Box has been deleted successfully",
 		);
 	}
+
+	// Always re-fetch from server so the list reflects the real state,
+	// even if the local removeNfcTag already updated it optimistically.
+	await fetchNfcCodes();
 }
 
 function handleClickOutside(event) {
