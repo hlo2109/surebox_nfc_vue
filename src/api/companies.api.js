@@ -529,6 +529,33 @@ export const getMyCompanyMembers = async (params = {}) => {
 };
 
 /**
+ * Link branch clock-in tag (body.nfcCode from Web NFC scan). Tag must be user_nfc for a company member.
+ * @param {string} locationId - Location UUID
+ * @param {{ nfcCode: string }} body
+ */
+export const postMyCompanyLocationSiteNfc = async (locationId, body) => {
+	try {
+		const response = await apiClient.post(`/my/company/locations/${locationId}/site-nfc`, body);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Remove linked branch NFC tag from a location.
+ * @param {string} locationId - Location UUID
+ */
+export const deleteMyCompanyLocationSiteNfc = async (locationId) => {
+	try {
+		const response = await apiClient.delete(`/my/company/locations/${locationId}/site-nfc`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
  * Add or invite a member to the authenticated user's company.
  * Same dual-mode logic as addCompanyMember (admin version).
  * Requires `manage_company` permission.
@@ -690,6 +717,38 @@ export const deleteMyCompanyLocation = async (locationId) => {
 export const updateMyCompanyLocation = async (locationId, locationData) => {
 	try {
 		const response = await apiClient.put(`/my/company/locations/${locationId}`, locationData);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * List fixed-site staff for a location (employee/manager clock-in list).
+ * @param {string} locationId - Location UUID
+ */
+export const getMyCompanyLocationFixedStaff = async (locationId) => {
+	try {
+		const response = await apiClient.get(
+			`/my/company/locations/${locationId}/fixed-staff`,
+		);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Replace fixed-site staff for a location.
+ * @param {string} locationId - Location UUID
+ * @param {string[]} userUuids - Active employee/manager user UUIDs
+ */
+export const replaceMyCompanyLocationFixedStaff = async (locationId, userUuids) => {
+	try {
+		const response = await apiClient.put(
+			`/my/company/locations/${locationId}/fixed-staff`,
+			{ userUuids },
+		);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -1003,6 +1062,8 @@ export default {
 
 	// My Company – Members
 	getMyCompanyMembers,
+	postMyCompanyLocationSiteNfc,
+	deleteMyCompanyLocationSiteNfc,
 	addMyCompanyMember,
 	updateMyCompanyMember,
 	removeMyCompanyMember,
@@ -1017,6 +1078,8 @@ export default {
 	addMyCompanyLocation,
 	deleteMyCompanyLocation,
 	updateMyCompanyLocation,
+	getMyCompanyLocationFixedStaff,
+	replaceMyCompanyLocationFixedStaff,
 
 	// My Company – Categories
 	getMyCompanyCategories,

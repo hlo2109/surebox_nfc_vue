@@ -295,18 +295,32 @@ export const useEmployeeAssignments = () => {
 	 * Stores the updated assignment as `currentAssignment` and patches the list.
 	 * @param {string} assignmentId                            - Assignment UUID
 	 * @param {{ latitude: number, longitude: number }} coords - Current GPS coordinates
-	 * @param {string} [nfcCode]                               - Optional NFC code for simultaneous verification
+	 * @param {string|{ nfcCode?: string, scheduleType?: 'day'|'night'|'travel' }} [nfcCodeOrOptions] - Legacy: NFC string; preferred: options object
 	 * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
 	 */
-	const startAssignment = async (assignmentId, coords, nfcCode) => {
+	const startAssignment = async (assignmentId, coords, nfcCodeOrOptions) => {
 		try {
 			loading.value = true;
 			error.value = null;
 
+			let nfcCode;
+			let scheduleType = 'day';
+			if (nfcCodeOrOptions && typeof nfcCodeOrOptions === 'object') {
+				nfcCode = nfcCodeOrOptions.nfcCode;
+				if (nfcCodeOrOptions.scheduleType) {
+					scheduleType = nfcCodeOrOptions.scheduleType;
+				}
+			} else {
+				nfcCode = nfcCodeOrOptions;
+			}
+
 			const payload = {
 				lat: coords.latitude,
 				lng: coords.longitude,
-				...(nfcCode !== undefined && { nfcCode }),
+				scheduleType,
+				...(nfcCode !== undefined && nfcCode !== null && nfcCode !== ''
+					? { nfcCode }
+					: {}),
 			};
 
 			const response = await serviceRequestsApi.startAssignment(assignmentId, payload);

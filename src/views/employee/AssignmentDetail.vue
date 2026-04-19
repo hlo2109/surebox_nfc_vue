@@ -119,7 +119,22 @@
 						</div>
 						<div v-if="startedAt" class="flex gap-3">
 							<dt class="text-sm text-gray-500 w-32 flex-shrink-0">Inicio</dt>
-							<dd class="text-sm text-gray-800">{{ formatDate(startedAt) }}</dd>
+							<dd class="text-sm text-gray-800">
+								{{ formatDate(startedAt) }}
+								<span
+									v-if="startedScheduleType"
+									class="block text-xs text-gray-500 mt-0.5 uppercase tracking-wide"
+								>
+									Turno:
+									{{
+										startedScheduleType === 'travel'
+											? 'Travel'
+											: startedScheduleType === 'night'
+												? 'Noche'
+												: 'Día'
+									}}
+								</span>
+							</dd>
 						</div>
 						<div v-if="completedAt" class="flex gap-3">
 							<dt class="text-sm text-gray-500 w-32 flex-shrink-0">Completado</dt>
@@ -306,6 +321,66 @@
 						</p>
 					</div>
 
+					<!-- Turno (día / noche / travel) al iniciar -->
+					<div class="rounded-lg border border-gray-200 bg-gray-50/80 p-4">
+						<span class="block text-xs font-semibold text-gray-600 mb-2">Tipo de turno</span>
+						<div
+							class="grid grid-cols-3 gap-1.5 rounded-lg border border-gray-200 p-1 bg-white"
+							role="group"
+							aria-label="Tipo de turno al iniciar servicio"
+						>
+							<button
+								type="button"
+								:aria-pressed="assignmentScheduleType === 'day'"
+								:class="[
+									'flex flex-col items-center justify-center gap-1 py-2.5 px-1 rounded-md text-xs font-semibold transition-all min-h-[4rem]',
+									assignmentScheduleType === 'day'
+										? 'bg-[#0D65AE]/10 text-[#0D65AE] ring-1 ring-[#0D65AE]/30'
+										: 'text-gray-500 hover:bg-gray-50',
+								]"
+								@click="assignmentScheduleType = 'day'"
+							>
+								<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+								</svg>
+								<span>Día</span>
+							</button>
+							<button
+								type="button"
+								:aria-pressed="assignmentScheduleType === 'night'"
+								:class="[
+									'flex flex-col items-center justify-center gap-1 py-2.5 px-1 rounded-md text-xs font-semibold transition-all min-h-[4rem]',
+									assignmentScheduleType === 'night'
+										? 'bg-[#0D65AE]/10 text-[#0D65AE] ring-1 ring-[#0D65AE]/30'
+										: 'text-gray-500 hover:bg-gray-50',
+								]"
+								@click="assignmentScheduleType = 'night'"
+							>
+								<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+								</svg>
+								<span>Noche</span>
+							</button>
+							<button
+								type="button"
+								:aria-pressed="assignmentScheduleType === 'travel'"
+								:class="[
+									'flex flex-col items-center justify-center gap-1 py-2.5 px-1 rounded-md text-xs font-semibold transition-all min-h-[4rem]',
+									assignmentScheduleType === 'travel'
+										? 'bg-[#0D65AE]/10 text-[#0D65AE] ring-1 ring-[#0D65AE]/30'
+										: 'text-gray-500 hover:bg-gray-50',
+								]"
+								@click="assignmentScheduleType = 'travel'"
+							>
+								<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.25 18.75a1.125 1.125 0 01-1.125-1.125v-9.75m10.5 10.875a1.125 1.125 0 01-1.125-1.125v-9.75M3.375 6.75h17.25c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125H3.375A1.125 1.125 0 012 17.625v-9.75c0-.621.504-1.125 1.125-1.125zM8.25 6.75V4.875c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125V6.75M12 12h.008v.008H12V12z" />
+								</svg>
+								<span>Travel</span>
+							</button>
+						</div>
+						<p class="text-xs text-gray-500 mt-2">Se guarda con el inicio del servicio (independiente del reloj de sede).</p>
+					</div>
+
 					<!-- Start Service Button -->
 					<button
 						type="button"
@@ -477,6 +552,57 @@
 						<p class="text-xs text-gray-500 mt-2 text-center">
 							Chrome en Android muestra el diálogo del sistema al acercar la etiqueta.
 						</p>
+					</div>
+
+					<div class="rounded-lg border border-gray-200 bg-gray-50 p-4 mb-4">
+						<span class="block text-xs font-semibold text-gray-600 mb-2">Tipo de turno</span>
+						<div class="grid grid-cols-3 gap-1.5 rounded-lg border border-gray-200 p-1 bg-white" role="group" aria-label="Tipo de turno">
+							<button
+								type="button"
+								:class="[
+									'flex flex-col items-center justify-center gap-1 py-2 px-0.5 rounded-md text-[11px] font-semibold transition-all min-h-[3.75rem]',
+									assignmentScheduleType === 'day'
+										? 'bg-[#0D65AE]/10 text-[#0D65AE] ring-1 ring-[#0D65AE]/30'
+										: 'text-gray-500 hover:bg-gray-50',
+								]"
+								@click="assignmentScheduleType = 'day'"
+							>
+								<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+								</svg>
+								<span>Día</span>
+							</button>
+							<button
+								type="button"
+								:class="[
+									'flex flex-col items-center justify-center gap-1 py-2 px-0.5 rounded-md text-[11px] font-semibold transition-all min-h-[3.75rem]',
+									assignmentScheduleType === 'night'
+										? 'bg-[#0D65AE]/10 text-[#0D65AE] ring-1 ring-[#0D65AE]/30'
+										: 'text-gray-500 hover:bg-gray-50',
+								]"
+								@click="assignmentScheduleType = 'night'"
+							>
+								<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+								</svg>
+								<span>Noche</span>
+							</button>
+							<button
+								type="button"
+								:class="[
+									'flex flex-col items-center justify-center gap-1 py-2 px-0.5 rounded-md text-[11px] font-semibold transition-all min-h-[3.75rem]',
+									assignmentScheduleType === 'travel'
+										? 'bg-[#0D65AE]/10 text-[#0D65AE] ring-1 ring-[#0D65AE]/30'
+										: 'text-gray-500 hover:bg-gray-50',
+								]"
+								@click="assignmentScheduleType = 'travel'"
+							>
+								<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.25 18.75a1.125 1.125 0 01-1.125-1.125v-9.75m10.5 10.875a1.125 1.125 0 01-1.125-1.125v-9.75M3.375 6.75h17.25c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125H3.375A1.125 1.125 0 012 17.625v-9.75c0-.621.504-1.125 1.125-1.125zM8.25 6.75V4.875c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125V6.75M12 12h.008v.008H12V12z" />
+								</svg>
+								<span>Travel</span>
+							</button>
+						</div>
 					</div>
 
 					<div class="flex flex-col-reverse sm:flex-row gap-3">
@@ -676,6 +802,9 @@ const nfcVerified = ref(false);
 const nfcVerifiedCode = ref('');
 const nfcError = ref('');
 
+/** Turno declarado al iniciar el servicio (día / noche / travel) — se envía al API. */
+const assignmentScheduleType = ref('day');
+
 // GPS
 const currentCoords = ref(null);
 
@@ -691,6 +820,7 @@ const serviceName = computed(() => {
 	const sr = serviceRequest.value;
 	return (
 		sr?.service?.name ||
+		sr?.serviceName ||
 		currentAssignment.value?.serviceName ||
 		currentAssignment.value?.service?.name ||
 		'Servicio sin nombre'
@@ -705,8 +835,11 @@ const serviceDescription = computed(() => {
 const customerName = computed(() => {
 	const sr = serviceRequest.value;
 	const c = sr?.customer || sr?.user;
-	if (!c) return 'Cliente desconocido';
-	return c.name || c.fullName || c.full_name || c.email || 'Cliente';
+	if (c) {
+		return c.name || c.fullName || c.full_name || c.email || 'Cliente';
+	}
+	if (sr?.customerName) return sr.customerName;
+	return 'Cliente desconocido';
 });
 
 const requestNotes = computed(() => serviceRequest.value?.notes || null);
@@ -730,6 +863,13 @@ const completedAt = computed(() =>
 	currentAssignment.value?.completedAt || currentAssignment.value?.completed_at || null,
 );
 
+const startedScheduleType = computed(
+	() =>
+		currentAssignment.value?.startScheduleType ||
+		currentAssignment.value?.start_schedule_type ||
+		null,
+);
+
 const locationInfo = computed(() => {
 	const sr = serviceRequest.value;
 	return sr?.location || currentAssignment.value?.location || null;
@@ -737,16 +877,23 @@ const locationInfo = computed(() => {
 
 const locationNfcCode = computed(() => {
 	const loc = locationInfo.value;
-	return loc?.nfcCode || loc?.nfc_code || loc?.nfcTag || null;
+	return (
+		loc?.nfcCode ||
+		loc?.nfc_code ||
+		loc?.nfcTag ||
+		loc?.code ||
+		null
+	);
 });
 
-/** Alineado a GET assignment: `nfcRequiredForStart` (default true si no viene el campo). */
+/** NFC obligatorio si la ubicación tiene tag o la empresa lo exige (API). */
 const nfcRequiredForStart = computed(() => {
 	const a = currentAssignment.value;
 	if (!a) return false;
-	if (a.nfcRequiredForStart === false || a.nfc_required_for_start === false) {
-		return false;
-	}
+	if (locationNfcCode.value) return true;
+	const explicitFalse =
+		a.nfcRequiredForStart === false || a.nfc_required_for_start === false;
+	if (explicitFalse) return false;
 	return true;
 });
 
@@ -963,8 +1110,10 @@ async function runStartService() {
 				coords = { latitude: 0, longitude: 0 };
 			}
 		}
-		const nfcCode = resolveNfcCodeForApi();
-		const result = await startAssignment(props.id, coords, nfcCode || undefined);
+		const result = await startAssignment(props.id, coords, {
+			nfcCode: resolveNfcCodeForApi(),
+			scheduleType: assignmentScheduleType.value,
+		});
 		if (result.success) {
 			await loadAssignment();
 			return true;
@@ -1077,6 +1226,13 @@ watch(showNfcStartModal, async (open) => {
 	nfcModalAutoLaunched.value = true;
 	handleNfcScan();
 });
+
+watch(
+	() => props.id,
+	() => {
+		assignmentScheduleType.value = 'day';
+	},
+);
 
 onMounted(async () => {
 	await loadAssignment();

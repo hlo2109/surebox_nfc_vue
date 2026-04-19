@@ -56,6 +56,7 @@
 					</div>
 					<!-- Right side menu -->
 					<div class="flex items-center gap-3">
+						<EmployeeWorkDayNavControl />
 						<button
 							type="button"
 							class="hidden sm:flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
@@ -678,6 +679,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useAuth } from "@/composables/useAuth";
 import { useAuthStore } from "@/stores/auth.store";
 import { usePermissions } from "@/composables/usePermissions";
+import EmployeeWorkDayNavControl from "@/components/employee/EmployeeWorkDayNavControl.vue";
 
 const route = useRoute();
 const router = useRouter();

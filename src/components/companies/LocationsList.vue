@@ -529,6 +529,161 @@
 							class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all text-sm"
 						/>
 					</div>
+
+					<div class="md:col-span-2 border-t border-gray-100 pt-4 mt-1">
+						<h4 class="text-sm font-semibold text-gray-900 mb-1">
+							Fixed site &amp; daily clock-in
+						</h4>
+						<p class="text-xs text-gray-500 mb-3">
+							Link the branch tag with the device (same
+							<strong>My NFC</strong> registry as the rest of the
+							app). Employees must scan this tag for Start time.
+						</p>
+						<div
+							v-if="hasLinkedSiteNfc"
+							class="rounded-lg border border-green-100 bg-green-50/80 px-3 py-2.5 text-sm text-gray-800 mb-3"
+						>
+							<p class="font-medium text-green-900">Tag linked</p>
+							<p class="text-xs text-gray-600 mt-0.5">
+								{{ siteNfcSummary }}
+							</p>
+						</div>
+						<div
+							v-else
+							class="rounded-lg border border-amber-100 bg-amber-50/60 px-3 py-2 text-xs text-amber-900 mb-3"
+						>
+							No branch tag linked yet. Scan a tag that is already
+							registered to an active employee or manager of your
+							company.
+						</div>
+						<div class="flex flex-wrap gap-2">
+							<button
+								type="button"
+								:disabled="editing || siteNfcScanning || !siteNfcSupported"
+								class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-[#0D65AE] rounded-lg hover:bg-[#0a4f87] disabled:opacity-50 disabled:cursor-not-allowed"
+								@click="handleScanBranchSiteNfc"
+							>
+								<svg
+									:class="[
+										'w-4 h-4',
+										siteNfcScanning ? 'animate-spin' : '',
+									]"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+									/>
+								</svg>
+								{{
+									siteNfcScanning
+										? "Hold tag near device…"
+										: "Scan NFC to link"
+								}}
+							</button>
+							<button
+								v-if="hasLinkedSiteNfc"
+								type="button"
+								:disabled="editing || siteNfcScanning"
+								class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-red-700 bg-white border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50"
+								@click="handleClearBranchSiteNfc"
+							>
+								Remove tag
+							</button>
+						</div>
+						<p
+							v-if="!siteNfcSupported"
+							class="text-xs text-amber-800 mt-2"
+						>
+							Web NFC is not available in this browser. Use Chrome on
+							Android to link the branch tag.
+						</p>
+						<p v-if="siteNfcError" class="text-xs text-red-600 mt-2">
+							{{ siteNfcError }}
+						</p>
+					</div>
+
+					<div
+						v-if="canManageLocations"
+						class="md:col-span-2"
+					>
+						<label
+							class="block text-sm font-medium text-gray-800 mb-1.5"
+						>
+							Fixed-site employees
+						</label>
+						<p class="text-xs text-gray-500 mb-2">
+							Active employees and managers listed here see
+							<strong>Start time</strong> on their assignment home
+							to begin and end the workday at this branch.
+						</p>
+						<div
+							v-if="!siteNfcReadyForStaff"
+							class="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+						>
+							<strong>Branch NFC required.</strong> Use
+							<em>Scan NFC to link</em> above first; the API will
+							not save fixed-site staff until a tag is linked (or a
+							legacy site code exists).
+						</div>
+						<input
+							v-model="staffSearchQuery"
+							type="search"
+							:disabled="editing || !siteNfcReadyForStaff"
+							placeholder="Search by name, email, or phone…"
+							class="w-full mb-2 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-[#0D65AE] focus:ring-1 focus:ring-[#0D65AE] focus:outline-none"
+						/>
+						<div
+							v-if="editStaffLoading"
+							class="text-sm text-gray-500 py-3"
+						>
+							Loading team…
+						</div>
+						<div
+							v-else
+							class="max-h-52 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100 bg-gray-50/50"
+						>
+							<label
+								v-for="m in membersForStaffPick"
+								:key="memberUuid(m)"
+								class="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-white text-sm"
+							>
+								<input
+									type="checkbox"
+									class="rounded border-gray-300 text-[#0D65AE] focus:ring-[#0D65AE]"
+									:value="memberUuid(m)"
+									v-model="editForm.fixedStaffUuids"
+									:disabled="editing || !siteNfcReadyForStaff"
+								/>
+								<span class="flex-1 min-w-0">
+									<span class="font-medium text-gray-900">{{
+										memberDisplayName(m)
+									}}</span>
+									<span
+										class="block text-xs text-gray-500 truncate"
+										>{{ memberSecondaryLine(m) }}</span
+									>
+								</span>
+								<span
+									class="text-xs uppercase text-gray-400 shrink-0"
+									>{{
+										m.role_in_company || m.roleInCompany
+									}}</span
+								>
+							</label>
+							<p
+								v-if="!membersForStaffPick.length"
+								class="px-3 py-4 text-sm text-gray-500 text-center"
+							>
+								No eligible employees or managers match your
+								search.
+							</p>
+						</div>
+					</div>
 				</div>
 
 				<div class="flex justify-end gap-3 pt-2">
@@ -696,6 +851,7 @@ import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import { useCompanies, useToast } from "@/composables";
 import { formatDate } from "@/utils/formatters";
+import * as companiesApi from "@/api/companies.api";
 
 const {
 	addMyCompanyLocation,
@@ -737,6 +893,15 @@ const showMapModal = ref(false);
 const adding = ref(false);
 const editing = ref(false);
 const deleting = ref(false);
+const editStaffLoading = ref(false);
+const membersForStaffPick = ref([]);
+const staffSearchQuery = ref("");
+const siteNfcScanning = ref(false);
+const siteNfcError = ref("");
+let staffSearchDebounce = null;
+
+const siteNfcSupported =
+	typeof window !== "undefined" && "NDEFReader" in window;
 
 // Form data
 const addForm = ref({
@@ -763,6 +928,7 @@ const editForm = ref({
 	departmentId: null,
 	lat: null,
 	lng: null,
+	fixedStaffUuids: [],
 });
 
 const locationToEdit = ref(null);
@@ -780,6 +946,42 @@ let mapInstance = null;
 // Computed
 const locationsCount = computed(() => {
 	return props.locations.length;
+});
+
+const hasLinkedSiteNfc = computed(() => {
+	const loc = locationToEdit.value;
+	return !!locationStr(loc, "siteUserNfcUuid", "site_user_nfc_uuid");
+});
+
+const siteNfcSummary = computed(() => {
+	const loc = locationToEdit.value;
+	const nick = locationStr(
+		loc,
+		"siteUserNfcNickname",
+		"site_user_nfc_nickname",
+	);
+	if (nick) {
+		return nick;
+	}
+	if (locationStr(loc, "siteUserNfcUuid", "site_user_nfc_uuid")) {
+		return "Registered tag (My NFC)";
+	}
+	if (locationStr(loc, "siteNfcCode", "site_nfc_code")) {
+		return "Legacy text code on file — scan a My NFC tag to upgrade.";
+	}
+	return "";
+});
+
+/** Branch NFC (linked tag or legacy text) required before fixed-site staff. */
+const siteNfcReadyForStaff = computed(() => {
+	const loc = locationToEdit.value;
+	if (!loc) {
+		return false;
+	}
+	if (locationStr(loc, "siteUserNfcUuid", "site_user_nfc_uuid")) {
+		return true;
+	}
+	return !!locationStr(loc, "siteNfcCode", "site_nfc_code");
 });
 
 // Methods — API / MySQL may use camelCase, snake_case, or lowercase keys
@@ -927,8 +1129,189 @@ const toNumericId = (v) => {
 	return Number.isFinite(n) ? n : null;
 };
 
-const startEditLocation = (location) => {
+const memberUuid = (m) =>
+	m?.user_uuid || m?.userUuid || m?.uuid || "";
+
+const memberDisplayName = (m) =>
+	m?.user_name ||
+	m?.userName ||
+	m?.name ||
+	m?.full_name ||
+	m?.fullName ||
+	m?.email ||
+	memberUuid(m);
+
+const memberSecondaryLine = (m) => {
+	const email = m?.user_email || m?.userEmail || m?.email;
+	const phone = m?.user_phone || m?.userPhone || m?.phone;
+	if (email && phone) {
+		return `${email} · ${phone}`;
+	}
+	return email || phone || "";
+};
+
+async function loadStaffMembersForEdit() {
+	if (!props.canManageLocations || !locationToEdit.value?.uuid) {
+		return;
+	}
+	editStaffLoading.value = true;
+	try {
+		const memWrap = await companiesApi.getMyCompanyMembers({
+			limit: 500,
+			status: "active",
+			...(staffSearchQuery.value.trim()
+				? { search: staffSearchQuery.value.trim() }
+				: {}),
+		});
+		const memRows = Array.isArray(memWrap?.data) ? memWrap.data : [];
+		membersForStaffPick.value = memRows.filter((m) => {
+			const role = String(
+				m.role_in_company || m.roleInCompany || "",
+			).toLowerCase();
+			return role === "employee" || role === "manager";
+		});
+	} catch (err) {
+		showToast(
+			"error",
+			"Members",
+			err?.message || "Could not load company members.",
+		);
+		membersForStaffPick.value = [];
+	} finally {
+		editStaffLoading.value = false;
+	}
+}
+
+watch(staffSearchQuery, () => {
+	if (!showEditDialog.value || !props.canManageLocations) {
+		return;
+	}
+	clearTimeout(staffSearchDebounce);
+	staffSearchDebounce = setTimeout(() => {
+		loadStaffMembersForEdit();
+	}, 350);
+});
+
+watch(showEditDialog, (open) => {
+	if (!open) {
+		staffSearchQuery.value = "";
+		siteNfcError.value = "";
+		clearTimeout(staffSearchDebounce);
+	}
+});
+
+async function readNfcTextFromDevice() {
+	return new Promise((resolve, reject) => {
+		const ndef = new window.NDEFReader();
+		let settled = false;
+		const finish = (err, val) => {
+			if (settled) {
+				return;
+			}
+			settled = true;
+			if (err) {
+				reject(err);
+			} else {
+				resolve(val);
+			}
+		};
+		ndef
+			.scan()
+			.then(() => {
+				ndef.addEventListener("reading", ({ message }) => {
+					let code = "";
+					for (const record of message.records) {
+						if (record.recordType === "text") {
+							const decoder = new TextDecoder(
+								record.encoding || "utf-8",
+							);
+							code = decoder.decode(record.data);
+							break;
+						}
+					}
+					if (!code || !String(code).trim()) {
+						finish(new Error("No text payload on this NFC tag."));
+						return;
+					}
+					finish(null, String(code).trim());
+				});
+				ndef.addEventListener("readingerror", () => {
+					finish(new Error("NFC read error."));
+				});
+			})
+			.catch((e) => finish(e || new Error("Could not start NFC reader")));
+	});
+}
+
+async function handleScanBranchSiteNfc() {
+	siteNfcError.value = "";
+	if (!siteNfcSupported) {
+		siteNfcError.value =
+			"Web NFC is not available. Use Chrome on Android.";
+		return;
+	}
+	const locKey = locationToEdit.value?.uuid ?? locationToEdit.value?.id;
+	if (!locKey) {
+		return;
+	}
+	siteNfcScanning.value = true;
+	try {
+		const code = await readNfcTextFromDevice();
+		const res = await companiesApi.postMyCompanyLocationSiteNfc(locKey, {
+			nfcCode: code,
+		});
+		if (res.success === false) {
+			throw new Error(res.message || "Could not link tag");
+		}
+		const payload = res.data || {};
+		locationToEdit.value = {
+			...locationToEdit.value,
+			siteUserNfcUuid: payload.siteUserNfcUuid,
+			siteUserNfcNickname: payload.siteUserNfcNickname,
+			siteNfcCode: null,
+		};
+		showToast("success", "Branch NFC", res.message || "Tag linked.");
+		emit("refresh");
+	} catch (err) {
+		siteNfcError.value =
+			err?.message || "Could not read or link this NFC tag.";
+	} finally {
+		siteNfcScanning.value = false;
+	}
+}
+
+async function handleClearBranchSiteNfc() {
+	siteNfcError.value = "";
+	const locKey = locationToEdit.value?.uuid ?? locationToEdit.value?.id;
+	if (!locKey) {
+		return;
+	}
+	siteNfcScanning.value = true;
+	try {
+		const res = await companiesApi.deleteMyCompanyLocationSiteNfc(locKey);
+		if (res.success === false) {
+			throw new Error(res.message || "Could not remove tag");
+		}
+		locationToEdit.value = {
+			...locationToEdit.value,
+			siteUserNfcUuid: null,
+			siteUserNfcNickname: null,
+			siteNfcCode: null,
+		};
+		showToast("success", "Branch NFC", res.message || "Tag removed.");
+		emit("refresh");
+	} catch (err) {
+		siteNfcError.value = err?.message || "Could not remove tag.";
+	} finally {
+		siteNfcScanning.value = false;
+	}
+}
+
+const startEditLocation = async (location) => {
 	locationToEdit.value = location;
+	staffSearchQuery.value = "";
+	siteNfcError.value = "";
+	membersForStaffPick.value = [];
 	editForm.value = {
 		name: locationStr(location, "name"),
 		address: locationStr(location, "address"),
@@ -962,6 +1345,7 @@ const startEditLocation = (location) => {
 		),
 		lat: location.lat != null ? Number(location.lat) : null,
 		lng: location.lng != null ? Number(location.lng) : null,
+		fixedStaffUuids: [],
 	};
 	const iso = iso2FromCountryCode(
 		locationStr(location, "countryCode", "country_code", "countrycode"),
@@ -969,6 +1353,32 @@ const startEditLocation = (location) => {
 	editPhoneDefaultCountry.value = iso || "AU";
 	editLocationSessionKey.value += 1;
 	showEditDialog.value = true;
+
+	const locKey = location?.uuid ?? location?.id;
+	if (!props.canManageLocations || !locKey) {
+		return;
+	}
+
+	editStaffLoading.value = true;
+	try {
+		const staffWrap = await companiesApi.getMyCompanyLocationFixedStaff(
+			locKey,
+		);
+		const staffRows = staffWrap?.data ?? [];
+		editForm.value.fixedStaffUuids = staffRows
+			.map((r) => r.userUuid || r.user_uuid)
+			.filter(Boolean);
+
+		await loadStaffMembersForEdit();
+	} catch (err) {
+		showToast(
+			"error",
+			"Could not load staff",
+			err?.message || "Try again or save location details only.",
+		);
+	} finally {
+		editStaffLoading.value = false;
+	}
 };
 
 const handleEditLocation = async () => {
@@ -1010,6 +1420,30 @@ const handleEditLocation = async () => {
 	editing.value = true;
 	const result = await updateMyCompanyLocation(locationKey, locationData);
 	if (result.success) {
+		if (props.canManageLocations) {
+			try {
+				const staffRes =
+					await companiesApi.replaceMyCompanyLocationFixedStaff(
+						locationKey,
+						editForm.value.fixedStaffUuids || [],
+					);
+				if (staffRes.success === false) {
+					showToast(
+						"error",
+						"Fixed staff",
+						staffRes.message ||
+							"Location saved but fixed staff list could not be updated.",
+					);
+				}
+			} catch (err) {
+				showToast(
+					"error",
+					"Fixed staff",
+					err?.message ||
+						"Location saved but fixed staff list could not be updated.",
+				);
+			}
+		}
 		showEditDialog.value = false;
 		locationToEdit.value = null;
 		emit("refresh");

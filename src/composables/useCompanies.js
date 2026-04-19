@@ -840,6 +840,38 @@ export const useCompanies = () => {
 		}
 	};
 
+	const fetchMyLocationFixedStaff = async (locationUuid) => {
+		try {
+			const response = await companiesApi.getMyCompanyLocationFixedStaff(locationUuid);
+			if (response.success !== false) {
+				return { success: true, data: response.data || response };
+			}
+			throw new Error(response.message || 'Failed to load fixed staff');
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to load fixed staff.';
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		}
+	};
+
+	const replaceMyLocationFixedStaff = async (locationUuid, userUuids) => {
+		try {
+			const response = await companiesApi.replaceMyCompanyLocationFixedStaff(
+				locationUuid,
+				userUuids,
+			);
+			if (response.success !== false) {
+				toast.showSuccess(response.message || 'Fixed-site staff updated');
+				return { success: true, data: response.data || response };
+			}
+			throw new Error(response.message || 'Failed to update fixed staff');
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to update fixed staff.';
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		}
+	};
+
 	// ==================== UTILITIES ====================
 
 	/**
@@ -917,6 +949,8 @@ export const useCompanies = () => {
 		addMyCompanyLocation,
 		updateMyCompanyLocation,
 		deleteMyCompanyLocation,
+		fetchMyLocationFixedStaff,
+		replaceMyLocationFixedStaff,
 		fetchMyCompanyServiceRequests,
 	};
 };
