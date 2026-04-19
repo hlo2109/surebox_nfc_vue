@@ -158,6 +158,8 @@
 							</div>
 						</div>
 						<button
+							v-if="canManageCompanyWorkspace"
+							type="button"
 							@click="router.push('/my-company')"
 							class="shrink-0 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#0D65AE] rounded-lg hover:bg-[#0b579a] focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 transition-all"
 						>
@@ -422,6 +424,8 @@
 								Recent Requests
 							</h3>
 							<button
+								v-if="canManageCompanyWorkspace"
+								type="button"
 								@click="router.push('/my-company/requests')"
 								class="inline-flex items-center gap-1 text-sm text-[#0D65AE] hover:text-[#0b579a] font-medium transition-colors"
 							>
@@ -468,8 +472,16 @@
 							<div
 								v-for="request in recentRequests"
 								:key="request.id"
-								@click="router.push('/my-company/requests')"
-								class="flex items-center gap-3 sm:gap-4 py-3 sm:py-4 cursor-pointer hover:bg-gray-50 -mx-5 sm:-mx-6 px-5 sm:px-6 transition-colors first:rounded-t-none last:rounded-b-xl"
+								:class="
+									canManageCompanyWorkspace
+										? 'cursor-pointer hover:bg-gray-50'
+										: ''
+								"
+								@click="
+									canManageCompanyWorkspace &&
+										router.push('/my-company/requests')
+								"
+								class="flex items-center gap-3 sm:gap-4 py-3 sm:py-4 -mx-5 sm:-mx-6 px-5 sm:px-6 transition-colors first:rounded-t-none last:rounded-b-xl"
 							>
 								<!-- Status icon -->
 								<div class="shrink-0">
@@ -603,8 +615,10 @@
 						</h3>
 
 						<div class="flex flex-col gap-3">
+							<template v-if="canManageCompanyWorkspace">
 							<!-- View All Requests (primary) -->
 							<button
+								type="button"
 								@click="router.push('/my-company/requests')"
 								class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-[#0D65AE] rounded-lg hover:bg-[#0b579a] focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 transition-all"
 							>
@@ -626,6 +640,7 @@
 
 							<!-- Manage Services (outline) -->
 							<button
+								type="button"
 								@click="router.push('/my-services')"
 								class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 transition-all"
 							>
@@ -647,6 +662,7 @@
 
 							<!-- Team Members (outline) -->
 							<button
+								type="button"
 								@click="router.push('/my-company/members')"
 								class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 transition-all"
 							>
@@ -668,6 +684,7 @@
 
 							<!-- Company Profile (outline) -->
 							<button
+								type="button"
 								@click="router.push('/my-company')"
 								class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 transition-all"
 							>
@@ -686,6 +703,7 @@
 								</svg>
 								Company Profile
 							</button>
+							</template>
 
 							<!-- Divider -->
 							<div class="border-t border-gray-100 my-1"></div>
@@ -737,6 +755,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth.store";
+import { canManageCompanyWorkspace as userCanManageCompanyWorkspace } from "@/utils/companyContext";
 import { getMyCompany, getMyCompanyServiceRequests } from "@/api/companies.api";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -747,6 +766,10 @@ const props = defineProps({
 // ─── Router / Store ───────────────────────────────────────────────────────────
 const router = useRouter();
 const authStore = useAuthStore();
+
+const canManageCompanyWorkspace = computed(() =>
+	userCanManageCompanyWorkspace(authStore.state.user),
+);
 
 // Safely read the companyRole computed ref and capitalise it
 const companyRoleLabel = computed(() => {

@@ -29,9 +29,11 @@ export const useEmployeeAssignments = () => {
 
 	// ==================== COMPUTED ====================
 
-	/** Assignments waiting for employee response */
+	/** Assignments waiting for employee to accept (API: `assigned`; legacy `pending`) */
 	const pendingAssignments = computed(() =>
-		assignments.value.filter((a) => a.status === 'pending'),
+		assignments.value.filter(
+			(a) => a.status === 'pending' || a.status === 'assigned',
+		),
 	);
 
 	/** Assignments the employee has accepted but not yet started */
@@ -52,15 +54,29 @@ export const useEmployeeAssignments = () => {
 	// ==================== PRIVATE HELPERS ====================
 
 	/**
-	 * Replace a single assignment in the local list by its id.
+	 * Replace a single assignment in the local list by uuid or internal id.
 	 * If it is not found the list is left unchanged.
-	 * @param {object} updated - The updated assignment object (must have .id)
+	 * @param {object} updated - The updated assignment object
 	 */
 	const _patchAssignmentInList = (updated) => {
-		const idx = assignments.value.findIndex((a) => a.id === updated.id);
+		if (!updated || typeof updated !== 'object') return;
+		const idx = assignments.value.findIndex(
+			(a) =>
+				(updated.uuid != null && a.uuid === updated.uuid) ||
+				(updated.id != null && a.id === updated.id),
+		);
 		if (idx !== -1) {
 			assignments.value[idx] = updated;
 		}
+	};
+
+	const _isCurrentAssignmentRoute = (assignmentId) => {
+		const cur = currentAssignment.value;
+		if (!cur || assignmentId == null) return false;
+		if (cur.uuid != null && String(cur.uuid) === String(assignmentId)) {
+			return true;
+		}
+		return String(cur.id) === String(assignmentId);
 	};
 
 	/**
@@ -124,20 +140,29 @@ export const useEmployeeAssignments = () => {
 	};
 
 	/**
-	 * Fetch a single assignment by ID and store it as `currentAssignment`.
+	 * Fetch a single assignment by UUID.
 	 * @param {string} assignmentId - Assignment UUID
+	 * @param {{ quiet?: boolean, setCurrent?: boolean }} [options] - quiet: no full-page loading; setCurrent: update `currentAssignment` (default true)
 	 * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
 	 */
-	const fetchMyAssignment = async (assignmentId) => {
+	const fetchMyAssignment = async (assignmentId, options = {}) => {
+		const { quiet = false, setCurrent = true } = options;
+		let toggledLoading = false;
 		try {
-			loading.value = true;
-			error.value = null;
+			if (!quiet) {
+				loading.value = true;
+				toggledLoading = true;
+				error.value = null;
+			}
 
 			const response = await serviceRequestsApi.getMyAssignment(assignmentId);
 
 			if (response.success !== false) {
 				const data = response.data ?? response;
-				currentAssignment.value = data;
+				_patchAssignmentInList(data);
+				if (setCurrent) {
+					currentAssignment.value = data;
+				}
 				return { success: true, data };
 			}
 
@@ -148,7 +173,9 @@ export const useEmployeeAssignments = () => {
 			toast.showError(msg);
 			return { success: false, error: msg };
 		} finally {
-			loading.value = false;
+			if (toggledLoading) {
+				loading.value = false;
+			}
 		}
 	};
 
@@ -166,13 +193,12 @@ export const useEmployeeAssignments = () => {
 			const response = await serviceRequestsApi.acceptAssignment(assignmentId);
 
 			if (response.success !== false) {
-				const data = response.data ?? response;
-				_patchAssignmentInList(data);
-				if (currentAssignment.value?.id === assignmentId) {
-					currentAssignment.value = data;
-				}
+				const reloaded = await fetchMyAssignment(assignmentId, {
+					quiet: true,
+					setCurrent: _isCurrentAssignmentRoute(assignmentId),
+				});
 				toast.showSuccess('Asignación aceptada correctamente');
-				return { success: true, data };
+				return { success: true, data: reloaded.data };
 			}
 
 			throw new Error(response.message || 'Error al aceptar la asignación');
@@ -201,13 +227,12 @@ export const useEmployeeAssignments = () => {
 			const response = await serviceRequestsApi.rejectAssignment(assignmentId, reason);
 
 			if (response.success !== false) {
-				const data = response.data ?? response;
-				_patchAssignmentInList(data);
-				if (currentAssignment.value?.id === assignmentId) {
-					currentAssignment.value = data;
-				}
+				const reloaded = await fetchMyAssignment(assignmentId, {
+					quiet: true,
+					setCurrent: _isCurrentAssignmentRoute(assignmentId),
+				});
 				toast.showSuccess('Asignación rechazada');
-				return { success: true, data };
+				return { success: true, data: reloaded.data };
 			}
 
 			throw new Error(response.message || 'Error al rechazar la asignación');
@@ -279,19 +304,20 @@ export const useEmployeeAssignments = () => {
 			error.value = null;
 
 			const payload = {
-				latitude: coords.latitude,
-				longitude: coords.longitude,
+				lat: coords.latitude,
+				lng: coords.longitude,
 				...(nfcCode !== undefined && { nfcCode }),
 			};
 
 			const response = await serviceRequestsApi.startAssignment(assignmentId, payload);
 
 			if (response.success !== false) {
-				const data = response.data ?? response;
-				_patchAssignmentInList(data);
-				currentAssignment.value = data;
+				const reloaded = await fetchMyAssignment(assignmentId, {
+					quiet: true,
+					setCurrent: _isCurrentAssignmentRoute(assignmentId),
+				});
 				toast.showSuccess('Servicio iniciado');
-				return { success: true, data };
+				return { success: true, data: reloaded.data };
 			}
 
 			throw new Error(response.message || 'Error al iniciar el servicio');
@@ -319,19 +345,20 @@ export const useEmployeeAssignments = () => {
 			error.value = null;
 
 			const payload = {
-				latitude: coords.latitude,
-				longitude: coords.longitude,
+				lat: coords.latitude,
+				lng: coords.longitude,
 				...(notes !== undefined && { notes }),
 			};
 
 			const response = await serviceRequestsApi.completeAssignment(assignmentId, payload);
 
 			if (response.success !== false) {
-				const data = response.data ?? response;
-				_patchAssignmentInList(data);
-				currentAssignment.value = data;
+				const reloaded = await fetchMyAssignment(assignmentId, {
+					quiet: true,
+					setCurrent: _isCurrentAssignmentRoute(assignmentId),
+				});
 				toast.showSuccess('¡Servicio completado!');
-				return { success: true, data };
+				return { success: true, data: reloaded.data };
 			}
 
 			throw new Error(response.message || 'Error al completar el servicio');
@@ -359,9 +386,18 @@ export const useEmployeeAssignments = () => {
 	 */
 	const recordTracking = async (assignmentId, trackingData) => {
 		try {
+			const lat = trackingData.lat ?? trackingData.latitude;
+			const lng = trackingData.lng ?? trackingData.longitude;
+			const body = {
+				lat,
+				lng,
+				...(trackingData.eventType != null && { eventType: trackingData.eventType }),
+				...(trackingData.accuracy != null && { accuracy: trackingData.accuracy }),
+				...(trackingData.timestamp != null && { timestamp: trackingData.timestamp }),
+			};
 			const response = await serviceRequestsApi.recordAssignmentTracking(
 				assignmentId,
-				trackingData,
+				body,
 			);
 
 			if (response.success !== false) {

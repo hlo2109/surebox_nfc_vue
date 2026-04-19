@@ -115,13 +115,11 @@
 									<h1
 										class="text-2xl font-bold text-gray-900 truncate"
 									>
-										{{
-											currentRequest.service?.name ||
-											"Service Request"
-										}}
+										{{ requestServiceName(currentRequest) }}
 									</h1>
-									<p class="text-sm text-gray-500">
-										Request #{{ currentRequest.id }}
+									<p class="text-sm text-gray-500 font-mono break-all">
+										Ref.
+										{{ currentRequest.uuid || currentRequest.id }}
 									</p>
 								</div>
 							</div>
@@ -184,15 +182,22 @@
 											Location
 										</p>
 										<p
-											class="text-sm font-medium text-gray-900"
+											class="text-sm font-medium text-gray-900 whitespace-pre-wrap"
 										>
-											{{ currentRequest.location || "—" }}
+											{{
+												formatRequestLocation(
+													currentRequest,
+												) || "—"
+											}}
 										</p>
 									</div>
 								</div>
 
 								<div
-									v-if="currentRequest.preferredDate"
+									v-if="
+										currentRequest.preferredDate ||
+										currentRequest.preferred_date
+									"
 									class="flex items-start gap-2"
 								>
 									<svg
@@ -217,7 +222,8 @@
 										>
 											{{
 												formatDate(
-													currentRequest.preferredDate,
+													currentRequest.preferredDate ||
+														currentRequest.preferred_date,
 												)
 											}}
 										</p>
@@ -279,26 +285,27 @@
 											class="text-sm font-medium text-gray-900"
 										>
 											{{
-												currentRequest.service?.company
-													?.name || "N/A"
+												requestCompanyName(
+													currentRequest,
+												) || "N/A"
 											}}
 										</p>
 									</div>
 								</div>
 							</div>
 
-							<!-- Description -->
+							<!-- Notes / description -->
 							<div
-								v-if="currentRequest.description"
+								v-if="requestNotes(currentRequest)"
 								class="mt-5 pt-5 border-t border-gray-100"
 							>
 								<p class="text-xs text-gray-500 mb-1">
-									Description
+									Notes
 								</p>
 								<p
-									class="text-sm text-gray-800 leading-relaxed"
+									class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap"
 								>
-									{{ currentRequest.description }}
+									{{ requestNotes(currentRequest) }}
 								</p>
 							</div>
 						</div>
@@ -409,8 +416,9 @@
 				</div>
 
 				<!-- Stats Row -->
-				<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+				<div :class="statsGridClass">
 					<div
+						v-if="showQuotesTab"
 						class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center justify-between"
 					>
 						<div>
@@ -542,6 +550,7 @@
 						class="flex items-center gap-1 p-2 border-b border-gray-100"
 					>
 						<button
+							v-if="showQuotesTab"
 							@click="activeTab = 'quotes'"
 							:class="[
 								'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
@@ -599,6 +608,16 @@
 								/>
 							</svg>
 							Assignment &amp; Service
+							<span
+								v-if="assignmentsCount > 0"
+								:class="[
+									'text-xs font-semibold rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center',
+									activeTab === 'assignment'
+										? 'bg-white/20 text-white'
+										: 'bg-purple-100 text-purple-800',
+								]"
+								>{{ assignmentsCount }}</span
+							>
 						</button>
 
 						<button
@@ -630,7 +649,7 @@
 					<!-- Tab Panels -->
 					<div class="p-6">
 						<!-- ── Quotes Tab ── -->
-						<div v-if="activeTab === 'quotes'">
+						<div v-if="showQuotesTab && activeTab === 'quotes'">
 							<!-- Loading quotes -->
 							<div
 								v-if="quotesLoading"
@@ -702,7 +721,7 @@
 							>
 								<QuoteCard
 									v-for="quote in currentRequest.quotes"
-									:key="quote.id"
+									:key="quote.uuid || quote.id"
 									:quote="quote"
 									:show-actions="
 										currentRequest.status === 'quoted' ||
@@ -717,13 +736,24 @@
 
 						<!-- ── Assignment & Service Tab ── -->
 						<div v-else-if="activeTab === 'assignment'">
-							<!-- Has assignment -->
 							<div
-								v-if="currentRequest.assignment"
+								v-if="assignmentsList.length"
 								class="space-y-6"
 							>
-								<!-- Assignment Card -->
+								<div>
+									<h3
+										class="text-sm font-semibold text-gray-800"
+									>
+										Assigned employees
+									</h3>
+									<p class="text-xs text-gray-500 mt-1">
+										One or more team members from the
+										company may be assigned to your request.
+									</p>
+								</div>
 								<div
+									v-for="(asg, aIdx) in assignmentsList"
+									:key="asg.uuid || aIdx"
 									class="bg-white rounded-xl border border-gray-200 shadow-sm p-5"
 								>
 									<div
@@ -751,39 +781,43 @@
 												<p
 													class="text-xs text-gray-500"
 												>
-													Assigned To
+													Assigned to
 												</p>
 												<p
 													class="font-semibold text-gray-900 text-base"
 												>
-													{{
-														currentRequest
-															.assignment.employee
-															?.name || "Unknown"
-													}}
+													{{ asg.employeeName }}
 												</p>
 												<p
+													v-if="asg.employeeEmail"
 													class="text-sm text-gray-500"
 												>
-													{{
-														currentRequest
-															.assignment.employee
-															?.email
-													}}
+													<!-- {{ asg.employeeEmail }} -->
+												</p>
+												<p
+													v-if="asg.employeePhone"
+													class="text-sm text-gray-500"
+												>
+													{{ asg.employeePhone }}
 												</p>
 											</div>
 										</div>
-										<span :class="assignmentBadgeClass">{{
-											assignmentStatus
-										}}</span>
+										<span
+											:class="
+												assignmentBadgeClassFor(
+													asg.status,
+												)
+											"
+											>{{
+												assignmentStatusLabel(
+													asg.status,
+												)
+											}}</span
+										>
 									</div>
 
-									<!-- Assigned Date -->
 									<div
-										v-if="
-											currentRequest.assignment
-												.assignedDate
-										"
+										v-if="asg.assignedAt"
 										class="flex items-center gap-2 pt-4 border-t border-gray-100"
 									>
 										<svg
@@ -801,118 +835,18 @@
 										</svg>
 										<div>
 											<p class="text-xs text-gray-500">
-												Assigned On
+												Assigned on
 											</p>
 											<p
 												class="text-sm font-medium text-gray-900"
 											>
 												{{
 													formatDateTime(
-														currentRequest
-															.assignment
-															.assignedDate,
+														asg.assignedAt,
 													)
 												}}
 											</p>
 										</div>
-									</div>
-
-									<!-- Action Buttons — employee-only, handled in AssignmentDetail -->
-									<div
-										v-if="false"
-										class="flex flex-wrap items-center gap-2 pt-4 mt-2 border-t border-gray-100"
-									>
-										<button
-											v-if="
-												currentRequest.assignment
-													.status === 'pending'
-											"
-											@click="
-												handleUpdateAssignmentStatus(
-													'in_progress',
-												)
-											"
-											class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all"
-										>
-											<svg
-												class="w-4 h-4"
-												fill="none"
-												stroke="currentColor"
-												viewBox="0 0 24 24"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-												/>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-												/>
-											</svg>
-											Start Work
-										</button>
-
-										<button
-											v-if="
-												currentRequest.assignment
-													.status === 'in_progress'
-											"
-											@click="
-												handleUpdateAssignmentStatus(
-													'completed',
-												)
-											"
-											class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all"
-										>
-											<svg
-												class="w-4 h-4"
-												fill="none"
-												stroke="currentColor"
-												viewBox="0 0 24 24"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-												/>
-											</svg>
-											Complete Work
-										</button>
-
-										<button
-											v-if="
-												currentRequest.assignment
-													.status !== 'cancelled' &&
-												currentRequest.assignment
-													.status !== 'completed'
-											"
-											@click="
-												handleUpdateAssignmentStatus(
-													'cancelled',
-												)
-											"
-											class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition-all"
-										>
-											<svg
-												class="w-4 h-4"
-												fill="none"
-												stroke="currentColor"
-												viewBox="0 0 24 24"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M6 18L18 6M6 6l12 12"
-												/>
-											</svg>
-											Cancel Assignment
-										</button>
 									</div>
 								</div>
 
@@ -1453,6 +1387,16 @@ import {
 } from "@/api/serviceRequests.api";
 import QuoteCard from "@/components/requests/QuoteCard.vue";
 import { formatCurrency, formatDate, formatDateTime } from "@/utils/formatters";
+import {
+	requestServiceName,
+	requestCompanyName,
+	requestNotes,
+	formatRequestLocation,
+	isQuotePricingRequest,
+	listRequestAssignments,
+	assignmentStatusLabel,
+	assignmentBadgeClassFor,
+} from "@/utils/serviceRequestDisplay";
 
 const router = useRouter();
 const route = useRoute();
@@ -1487,8 +1431,28 @@ const isUpdating = ref(false);
 const currentRequest = computed(() => state.currentServiceRequest);
 
 const quotesCount = computed(() => currentRequest.value?.quotes?.length || 0);
-const assignmentsCount = computed(() =>
-	currentRequest.value?.assignment ? 1 : 0,
+const showQuotesTab = computed(() =>
+	isQuotePricingRequest(currentRequest.value),
+);
+const assignmentsList = computed(() =>
+	listRequestAssignments(currentRequest.value),
+);
+const assignmentsCount = computed(() => assignmentsList.value.length);
+
+const statsGridClass = computed(() =>
+	showQuotesTab.value
+		? "grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6"
+		: "grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6",
+);
+
+watch(
+	() => currentRequest.value?.uuid,
+	(uuid, prevUuid) => {
+		if (!uuid || uuid === prevUuid) return;
+		activeTab.value = isQuotePricingRequest(currentRequest.value)
+			? "quotes"
+			: "assignment";
+	},
 );
 
 const statusConfig = {
@@ -1567,35 +1531,6 @@ const statusIcon = computed(() => currentStatus.value.icon);
 const statusIconClass = computed(() => currentStatus.value.iconClass);
 const statusBadgeClass = computed(() => currentStatus.value.badgeClass);
 
-const assignmentStatus = computed(() => {
-	const status = currentRequest.value?.assignment?.status || "pending";
-	return status.replace("_", " ").toUpperCase();
-});
-
-const assignmentStatusSeverity = computed(() => {
-	const status = currentRequest.value?.assignment?.status;
-	if (status === "completed") return "success";
-	if (status === "in_progress") return "info";
-	if (status === "cancelled") return "danger";
-	return "warning";
-});
-
-const assignmentBadgeClass = computed(() => {
-	const status = currentRequest.value?.assignment?.status;
-	const map = {
-		completed:
-			"inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800",
-		in_progress:
-			"inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800",
-		cancelled:
-			"inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800",
-	};
-	return (
-		map[status] ||
-		"inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800"
-	);
-});
-
 // Customer can only cancel their own request
 const statusOptions = [{ label: "Cancelled", value: "cancelled" }];
 
@@ -1606,7 +1541,7 @@ const activityEvents = computed(() => {
 		// Request created
 		events.push({
 			title: "Request Created",
-			description: `Service request for ${currentRequest.value.service?.name}`,
+			description: `Service request for ${requestServiceName(currentRequest.value)}`,
 			date: formatDateTime(
 				currentRequest.value.createdAt ||
 					currentRequest.value.created_at,
@@ -1622,9 +1557,19 @@ const activityEvents = computed(() => {
 			currentRequest.value.quotes.length > 0
 		) {
 			currentRequest.value.quotes.forEach((quote) => {
+				const amt =
+					quote.totalPrice ??
+					quote.total_price ??
+					quote.amount ??
+					0;
+				const days = quote.estimatedDays ?? quote.estimated_days;
+				const extra =
+					days != null && days !== ""
+						? ` (${days} day${Number(days) === 1 ? "" : "s"})`
+						: "";
 				events.push({
 					title: "Quote Received",
-					description: `Quote for ${formatCurrency(quote.amount)} (${quote.estimatedDays} days)`,
+					description: `Quote for ${formatCurrency(Number(amt))}${extra}`,
 					date: formatDateTime(quote.createdAt || quote.created_at),
 					icon: "pi pi-file",
 					iconClass:
@@ -1633,19 +1578,21 @@ const activityEvents = computed(() => {
 			});
 		}
 
-		// Assignment
-		if (currentRequest.value.assignment) {
+		listRequestAssignments(currentRequest.value).forEach((asg) => {
 			events.push({
 				title: "Employee Assigned",
-				description: `Assigned to ${currentRequest.value.assignment.employee?.name}`,
-				date: formatDateTime(
-					currentRequest.value.assignment.assignedDate,
-				),
+				description: `Assigned to ${asg.employeeName}`,
+				date: asg.assignedAt
+					? formatDateTime(asg.assignedAt)
+					: formatDateTime(
+							currentRequest.value.createdAt ||
+								currentRequest.value.created_at,
+						),
 				icon: "pi pi-user",
 				iconClass:
 					"bg-green-100 text-green-600 w-8 h-8 rounded-full flex items-center justify-center",
 			});
-		}
+		});
 
 		// Status changes
 		if (currentRequest.value.status === "completed") {

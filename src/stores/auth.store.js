@@ -12,6 +12,7 @@ import {
 	getPrimaryCompanyRole,
 	isPrimaryCompanyAdmin,
 	isPrimaryCompanyFieldStaff,
+	canManageCompanyWorkspace,
 } from '@/utils/companyContext';
 
 /**
@@ -71,6 +72,11 @@ const isCompanyAdmin = computed(() => isPrimaryCompanyAdmin(state.user));
 
 // Company member who is not the company admin — assignments, NFC in the field
 const isCompanyEmployee = computed(() => isPrimaryCompanyFieldStaff(state.user));
+
+/** Company org admin / manager / system company_admin — sees My Company menu & routes */
+const canManageCompanyWorkspaceNav = computed(() =>
+	canManageCompanyWorkspace(state.user),
+);
 
 // Actions
 const setAuthData = (data) => {
@@ -142,6 +148,7 @@ export const useAuthStore = () => {
 		companyRole,
 		isCompanyAdmin,
 		isCompanyEmployee,
+		canManageCompanyWorkspace: canManageCompanyWorkspaceNav,
 
 		// Actions
 		setAuthData,

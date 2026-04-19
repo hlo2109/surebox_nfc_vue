@@ -371,7 +371,7 @@
 			>
 				<div
 					v-for="assignment in filteredAssignments"
-					:key="assignment.id"
+					:key="assignment.uuid || assignment.id"
 					class="bg-white rounded-xl border border-gray-200 hover:border-[#0D65AE]/40 hover:shadow-md transition-all flex flex-col"
 				>
 					<!-- Card Header -->
@@ -526,7 +526,10 @@
 					<div class="px-5 pb-5">
 						<!-- Action hint for pending -->
 						<div
-							v-if="assignment.status === 'pending'"
+							v-if="
+								assignment.status === 'pending' ||
+								assignment.status === 'assigned'
+							"
 							class="flex items-center gap-1.5 mb-3 text-xs text-yellow-700 bg-yellow-50 rounded-lg px-3 py-2"
 						>
 							<svg
@@ -556,7 +559,7 @@
 						</div>
 
 						<router-link
-							:to="`/my-assignments/${assignment.id}`"
+							:to="`/my-assignments/${assignment.uuid}`"
 							class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-[#0D65AE] rounded-lg hover:bg-[#0D65AE]/90 focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 transition-all"
 						>
 							<span>View Details</span>
@@ -630,6 +633,11 @@ const rejectedCount = computed(
 
 const filteredAssignments = computed(() => {
 	if (activeFilter.value === "all") return assignments.value;
+	if (activeFilter.value === "pending") {
+		return assignments.value.filter(
+			(a) => a.status === "pending" || a.status === "assigned",
+		);
+	}
 	return assignments.value.filter((a) => a.status === activeFilter.value);
 });
 
@@ -644,7 +652,8 @@ function setFilter(value) {
 
 // ── Status display helpers ────────────────────────────────────────────────────
 const statusLabels = {
-	pending: "Pending",
+	assigned: "Confirm service",
+	pending: "Confirm service",
 	accepted: "Accepted",
 	in_progress: "In Progress",
 	completed: "Completed",
@@ -653,6 +662,7 @@ const statusLabels = {
 };
 
 const statusClasses = {
+	assigned: "bg-yellow-100 text-yellow-800",
 	pending: "bg-yellow-100 text-yellow-800",
 	accepted: "bg-blue-100 text-blue-800",
 	in_progress: "bg-teal-100 text-teal-800",

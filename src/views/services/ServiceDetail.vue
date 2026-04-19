@@ -74,17 +74,115 @@
 					</button>
 				</div>
 
+				<!-- Hero -->
+				<div
+					class="relative rounded-2xl overflow-hidden border border-gray-200 shadow-md mb-6 bg-slate-100"
+				>
+					<div class="aspect-[21/9] sm:aspect-[2.4/1] max-h-72">
+						<img
+							v-if="heroImage"
+							:src="heroImage"
+							:alt="service.name"
+							class="w-full h-full object-cover"
+						/>
+						<div
+							v-else
+							class="w-full h-full flex items-center justify-center text-slate-400"
+						>
+							<svg
+								class="w-16 h-16 opacity-50"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="1.2"
+									d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+								/>
+							</svg>
+						</div>
+					</div>
+					<div
+						class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none"
+					></div>
+					<div
+						class="absolute bottom-0 left-0 right-0 p-4 sm:p-6 flex items-end justify-between gap-3"
+					>
+						<div class="min-w-0 text-white drop-shadow-sm">
+							<h1
+								class="text-2xl sm:text-3xl font-bold leading-tight truncate"
+							>
+								{{ service.name }}
+							</h1>
+							<p
+								v-if="categoryName"
+								class="text-sm text-white/90 mt-1"
+							>
+								{{ categoryName }}
+							</p>
+						</div>
+						<button
+							type="button"
+							@click="toggleFavorite"
+							class="pointer-events-auto flex-shrink-0 p-3 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur border border-white/30 text-amber-300 transition-colors"
+							:title="
+								isFavorite ? 'Remove from favorites' : 'Favorite'
+							"
+						>
+							<svg
+								v-if="isFavorite"
+								class="w-6 h-6 fill-current"
+								viewBox="0 0 24 24"
+							>
+								<path
+									d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+								/>
+							</svg>
+							<svg
+								v-else
+								class="w-6 h-6 stroke-current fill-none"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-width="1.6"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M12 3l1.9 3.85L18 8.5l-4.1 4 1 5.9L12 16.9 7.1 18.4l1-5.9L4 8.5l4.1-.65L12 3z"
+								/>
+							</svg>
+						</button>
+					</div>
+					<span
+						v-if="service.promotion?.enabled"
+						class="absolute top-3 left-3 px-2 py-1 rounded-md text-xs font-bold bg-emerald-500 text-white shadow"
+					>
+						Promotion
+					</span>
+					<span
+						class="absolute top-3 right-3 px-2 py-1 rounded-md text-xs font-semibold shadow"
+						:class="
+							pricingMode === 'quote'
+								? 'bg-amber-900/90 text-amber-50'
+								: 'bg-white/90 text-gray-900'
+						"
+					>
+						{{ pricingMode === "quote" ? "Quote" : "Fixed price" }}
+					</span>
+				</div>
+
 				<!-- Service Header Card -->
 				<div
 					class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 sm:p-8 mb-6"
 				>
 					<div class="flex items-start justify-between mb-4">
 						<div class="flex-1">
-							<h1
-								class="text-3xl sm:text-4xl font-bold text-gray-900 mb-3"
+							<h2
+								class="text-xl sm:text-2xl font-bold text-gray-900 mb-3"
 							>
-								{{ service.name }}
-							</h1>
+								Summary
+							</h2>
 							<div class="flex items-center gap-2 flex-wrap">
 								<!-- Category Badge -->
 								<span
@@ -143,7 +241,13 @@
 							<div>
 								<p class="text-sm text-gray-600">Price</p>
 								<p class="text-2xl font-bold text-[#0D65AE]">
-									{{ formatPrice(service.price) }}
+									{{ displayServicePrice() }}
+								</p>
+								<p
+									v-if="promotionText()"
+									class="text-sm text-emerald-700 font-medium mt-1"
+								>
+									{{ promotionText() }}
 								</p>
 							</div>
 						</div>
@@ -178,6 +282,48 @@
 					</div>
 				</div>
 
+				<!-- Gallery (skip first image when used as hero) -->
+				<div
+					v-if="galleryPhotos.length"
+					class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 sm:p-8 mb-6"
+				>
+					<h2
+						class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2"
+					>
+						<svg
+							class="w-5 h-5 text-[#0D65AE]"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+							/>
+						</svg>
+						Gallery
+					</h2>
+					<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+						<a
+							v-for="(url, i) in galleryPhotos"
+							:key="i"
+							:href="url"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="block rounded-lg overflow-hidden border border-gray-100 aspect-video bg-gray-50"
+						>
+							<img
+								:src="url"
+								:alt="`${service.name} ${i + 1}`"
+								class="w-full h-full object-cover hover:opacity-95"
+								loading="lazy"
+							/>
+						</a>
+					</div>
+				</div>
+
 				<!-- Description Section -->
 				<div
 					v-if="service.description"
@@ -208,9 +354,9 @@
 					</p>
 				</div>
 
-				<!-- Company Information -->
+				<!-- Company -->
 				<div
-					v-if="service.company"
+					v-if="companyDisplayName"
 					class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 sm:p-8 mb-6"
 				>
 					<h2
@@ -231,12 +377,16 @@
 						</svg>
 						Offered By
 					</h2>
-					<div class="flex items-start gap-4">
+					<button
+						type="button"
+						class="w-full text-left rounded-xl border border-gray-100 bg-gray-50/80 hover:border-[#0D65AE]/40 hover:bg-white transition-all p-4 flex items-start gap-4"
+						@click="openCompanyPreview"
+					>
 						<div
-							class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0"
+							class="w-14 h-14 rounded-xl bg-white border border-gray-200 flex items-center justify-center flex-shrink-0 shadow-sm"
 						>
 							<svg
-								class="w-8 h-8 text-gray-400"
+								class="w-7 h-7 text-gray-400"
 								fill="none"
 								stroke="currentColor"
 								viewBox="0 0 24 24"
@@ -249,79 +399,36 @@
 								/>
 							</svg>
 						</div>
-						<div class="flex-1">
-							<h3
-								class="text-lg font-semibold text-gray-900 mb-1"
+						<div class="flex-1 min-w-0">
+							<p
+								class="text-lg font-semibold text-[#0D65AE] truncate"
 							>
-								{{ service.company.name }}
-							</h3>
-							<div class="space-y-2 text-sm text-gray-600">
-								<p
-									v-if="service.company.email"
-									class="flex items-center gap-2"
-								>
-									<svg
-										class="w-4 h-4 text-gray-400"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-										/>
-									</svg>
-									{{ service.company.email }}
-								</p>
-								<p
-									v-if="service.company.phone"
-									class="flex items-center gap-2"
-								>
-									<svg
-										class="w-4 h-4 text-gray-400"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-										/>
-									</svg>
-									{{ service.company.phone }}
-								</p>
-								<p
-									v-if="service.company.address"
-									class="flex items-center gap-2"
-								>
-									<svg
-										class="w-4 h-4 text-gray-400"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-										/>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-										/>
-									</svg>
-									{{ service.company.address }}
-								</p>
+								{{ companyDisplayName }}
+							</p>
+							<p class="text-xs text-gray-500 mt-1">
+								View company profile, locations &amp; contact
+							</p>
+							<div
+								v-if="service.company?.email"
+								class="mt-2 text-sm text-gray-600 truncate"
+							>
+								{{ service.company.email }}
 							</div>
 						</div>
-					</div>
+						<svg
+							class="w-5 h-5 text-gray-400 flex-shrink-0 mt-1"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M9 5l7 7-7 7"
+							/>
+						</svg>
+					</button>
 				</div>
 
 				<!-- Metadata Section -->
@@ -368,14 +475,16 @@
 							</span>
 						</div>
 						<div
-							v-if="service.id"
+							v-if="service.uuid || service.id"
 							class="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg"
 						>
 							<span class="text-sm text-gray-600"
-								>Service ID</span
+								>Reference</span
 							>
-							<span class="text-sm font-medium text-gray-900">
-								#{{ service.id }}
+							<span
+								class="text-sm font-medium text-gray-900 font-mono truncate max-w-[60%] text-right"
+							>
+								{{ service.uuid || service.id }}
 							</span>
 						</div>
 					</div>
@@ -426,6 +535,115 @@
 					</button>
 				</div>
 			</div>
+
+			<Teleport to="body">
+				<Transition name="modal">
+					<div
+						v-if="companyPreviewOpen"
+						class="fixed inset-0 z-[70] flex items-center justify-center p-4"
+						@click.self="closeCompanyPreview"
+					>
+						<div
+							class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+							@click="closeCompanyPreview"
+						></div>
+						<div
+							class="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl"
+							@click.stop
+						>
+							<div
+								class="relative overflow-hidden rounded-t-2xl bg-gradient-to-br from-[#0D65AE] to-slate-900 px-6 py-7 text-white"
+							>
+								<button
+									type="button"
+									class="absolute top-3 right-3 p-2 rounded-lg bg-white/10 hover:bg-white/20"
+									@click="closeCompanyPreview"
+								>
+									<svg
+										class="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M6 18L18 6M6 6l12 12"
+										/>
+									</svg>
+								</button>
+								<h2 class="text-2xl font-bold pr-10">
+									{{ companyPreview?.name || "Company" }}
+								</h2>
+								<p
+									v-if="companyPreview?.serviceCount != null"
+									class="text-sm text-white/80 mt-1"
+								>
+									{{ companyPreview.serviceCount }} services
+								</p>
+							</div>
+							<div class="p-6 space-y-4">
+								<div
+									v-if="companyPreviewLoading"
+									class="flex items-center gap-2 text-gray-600 text-sm"
+								>
+									<div
+										class="animate-spin rounded-full h-5 w-5 border-2 border-[#0D65AE] border-t-transparent"
+									></div>
+									Loading…
+								</div>
+								<template v-else-if="companyPreview">
+									<p
+										v-if="companyPreview.description"
+										class="text-gray-700 text-sm whitespace-pre-wrap"
+									>
+										{{ companyPreview.description }}
+									</p>
+									<div
+										v-if="companyPreview.locations?.length"
+										class="space-y-2"
+									>
+										<h3
+											class="text-xs font-bold text-gray-500 uppercase"
+										>
+											Locations
+										</h3>
+										<ul class="space-y-2 text-sm">
+											<li
+												v-for="(loc, i) in companyPreview.locations"
+												:key="loc.uuid || i"
+												class="border border-gray-100 rounded-lg px-3 py-2"
+											>
+												<p class="font-medium">
+													{{ loc.name }}
+												</p>
+												<p
+													v-if="loc.address"
+													class="text-gray-600 text-xs"
+												>
+													{{ loc.address }}
+												</p>
+											</li>
+										</ul>
+									</div>
+								</template>
+							</div>
+							<div
+								class="sticky bottom-0 bg-white border-t px-6 py-3 rounded-b-2xl"
+							>
+								<button
+									type="button"
+									class="w-full py-2.5 text-sm font-semibold border rounded-lg hover:bg-gray-50"
+									@click="closeCompanyPreview"
+								>
+									Close
+								</button>
+							</div>
+						</div>
+					</div>
+				</Transition>
+			</Teleport>
 		</div>
 	</div>
 </template>
@@ -435,7 +653,12 @@ import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useServices } from "@/composables/useServices";
 import { useToast } from "@/composables/useToast";
-import { useAuthStore } from "@/stores/auth.store";
+import {
+	getCompanyCatalog,
+	addServiceFavorite,
+	removeServiceFavorite,
+	listServiceFavorites,
+} from "@/api/services.api";
 import {
 	formatCurrency,
 	formatDuration,
@@ -446,27 +669,72 @@ import {
 const route = useRoute();
 const router = useRouter();
 const { fetchService, getCategoryById } = useServices();
-const { showInfo } = useToast();
-const authStore = useAuthStore();
-
+const { showInfo, showError, showSuccess } = useToast();
 // State
 const loading = ref(false);
 const error = ref(null);
 const service = ref(null);
+const isFavorite = ref(false);
+const companyPreviewOpen = ref(false);
+const companyPreviewLoading = ref(false);
+const companyPreview = ref(null);
 
 // Computed
-const serviceId = computed(() => parseInt(route.params.id));
+const serviceId = computed(() => route.params.id);
 
 const categoryName = computed(() => {
 	if (!service.value) return "";
 	if (service.value.category?.name) {
 		return service.value.category.name;
 	}
+	if (service.value.category_name) {
+		return service.value.category_name;
+	}
 	if (service.value.categoryId) {
 		const category = getCategoryById(service.value.categoryId);
 		return category?.name || "";
 	}
 	return "";
+});
+
+const heroImage = computed(() => {
+	const p = service.value?.photos;
+	if (Array.isArray(p) && p.length > 0 && p[0]) {
+		return p[0];
+	}
+	return null;
+});
+
+const galleryPhotos = computed(() => {
+	const p = service.value?.photos;
+	if (!Array.isArray(p) || p.length <= 1) {
+		return [];
+	}
+	return p.slice(1);
+});
+
+const pricingMode = computed(
+	() =>
+		service.value?.pricing_mode ||
+		service.value?.pricingMode ||
+		"fixed",
+);
+
+const companyDisplayName = computed(() => {
+	const s = service.value;
+	if (!s) return "";
+	return (
+		s.company?.name ||
+		s.company_name ||
+		s.companyName ||
+		""
+	);
+});
+
+const companyUuidForPreview = computed(() => {
+	const s = service.value;
+	if (!s) return null;
+	return s.company_uuid || s.companyUuid || s.company?.uuid || null;
 });
 
 const statusClass = computed(() => {
@@ -485,7 +753,37 @@ const statusClass = computed(() => {
 
 // Methods
 const formatPrice = (price) => {
+	if (price === null || price === undefined || price === "") {
+		return "—";
+	}
 	return formatCurrency(price);
+};
+
+const displayServicePrice = () => {
+	const s = service.value;
+	if (!s) {
+		return "—";
+	}
+	const mode = s.pricing_mode || s.pricingMode;
+	const base = s.base_price ?? s.basePrice ?? s.price;
+	if (mode === "quote") {
+		if (base === null || base === undefined || base === "") {
+			return "Quote on request";
+		}
+		return `From ${formatPrice(base)} (guide)`;
+	}
+	return formatPrice(base);
+};
+
+const promotionText = () => {
+	const pr = service.value?.promotion;
+	if (!pr || !pr.enabled) {
+		return "";
+	}
+	const was = formatPrice(pr.compareAt);
+	const now = formatPrice(pr.price);
+	const lbl = pr.label ? ` — ${pr.label}` : "";
+	return `Was ${was} · Now ${now}${lbl}`;
 };
 
 const loadService = async () => {
@@ -496,6 +794,16 @@ const loadService = async () => {
 		const result = await fetchService(serviceId.value);
 		if (result.success) {
 			service.value = result.data;
+			const sid =
+				result.data?.uuid || result.data?.id || serviceId.value;
+			try {
+				const favRes = await listServiceFavorites();
+				const payload = favRes?.data ?? favRes;
+				const uuids = payload?.serviceUuids ?? [];
+				isFavorite.value = Array.isArray(uuids) && uuids.includes(sid);
+			} catch {
+				isFavorite.value = false;
+			}
 		} else {
 			throw new Error(result.error || "Failed to load service");
 		}
@@ -507,25 +815,87 @@ const loadService = async () => {
 	}
 };
 
+const openCompanyPreview = async () => {
+	const uuid = companyUuidForPreview.value;
+	if (!uuid) {
+		showInfo("Company profile is not available for this service.");
+		return;
+	}
+	companyPreviewOpen.value = true;
+	companyPreviewLoading.value = true;
+	companyPreview.value = null;
+	try {
+		const res = await getCompanyCatalog(uuid);
+		const data = res?.data ?? res;
+		if (res?.success === false || !data) {
+			throw new Error(res?.message || "Could not load company");
+		}
+		companyPreview.value = data;
+	} catch (e) {
+		showError(e.message || "Could not load company");
+		companyPreviewOpen.value = false;
+	} finally {
+		companyPreviewLoading.value = false;
+	}
+};
+
+const closeCompanyPreview = () => {
+	companyPreviewOpen.value = false;
+	companyPreview.value = null;
+};
+
+const toggleFavorite = async () => {
+	const s = service.value;
+	const sid = s?.uuid || s?.id;
+	if (!sid) return;
+	const next = !isFavorite.value;
+	isFavorite.value = next;
+	try {
+		if (next) {
+			await addServiceFavorite(sid);
+			showSuccess("Saved to favorites");
+		} else {
+			await removeServiceFavorite(sid);
+			showSuccess("Removed from favorites");
+		}
+	} catch (e) {
+		isFavorite.value = !next;
+		showError(e.message || "Could not update favorites");
+	}
+};
+
 const goBack = () => {
 	router.go(-1);
 };
 
 const bookService = () => {
-	const serviceId = service.value?.uuid || service.value?.id;
-	if (!serviceId) {
+	const sid = service.value?.uuid || service.value?.id;
+	if (!sid) {
 		showInfo("Service information not available");
 		return;
 	}
+	const cid =
+		service.value?.company_uuid ||
+		service.value?.companyUuid ||
+		service.value?.company?.uuid ||
+		null;
+	const query = { serviceId: String(sid) };
+	if (cid) {
+		query.companyId = String(cid);
+	}
 	router.push({
 		name: "CreateRequest",
-		query: { serviceId: String(serviceId) },
+		query,
 	});
 };
 
 const contactCompany = () => {
-	if (service.value?.company?.email) {
-		window.location.href = `mailto:${service.value.company.email}`;
+	const email =
+		service.value?.company?.email ||
+		service.value?.company_email ||
+		null;
+	if (email) {
+		window.location.href = `mailto:${email}`;
 	} else {
 		showInfo("Company contact information not available");
 	}

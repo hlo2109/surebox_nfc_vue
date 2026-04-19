@@ -27,7 +27,7 @@
 			title="No categories yet"
 			description="Add your first category to organize your services"
 			:show-action="canAddCategories"
-			action-label="Add Category"
+			action-label="Add from catalogue"
 			@action="handleAddCategory"
 		/>
 
@@ -35,7 +35,7 @@
 		<div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 			<div
 				v-for="category in categories"
-				:key="category.id"
+				:key="category.uuid || category.id"
 				class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
 			>
 				<!-- Category Header -->

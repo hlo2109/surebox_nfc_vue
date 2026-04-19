@@ -5,6 +5,13 @@
 			Create account
 		</h1>
 		<p class="text-gray-600 text-lg">Get started with Surebox today</p>
+		<div
+			v-if="isInviteFlow"
+			class="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900"
+		>
+			Estás creando la cuenta para aceptar una invitación a una empresa. El correo debe
+			coincidir con el de la invitación.
+		</div>
 	</div>
 
 	<!-- Auth Container -->
@@ -12,7 +19,7 @@
 		<!-- Tab Switcher -->
 		<div class="flex gap-1 p-1 bg-gray-100 rounded-xl">
 			<router-link
-				to="/login"
+				:to="{ path: '/login', query: authQuery }"
 				class="flex-1 text-center py-3 px-4 rounded-lg font-medium transition-all"
 				:class="
 					isLoginRoute
@@ -23,7 +30,7 @@
 				Sign In
 			</router-link>
 			<router-link
-				to="/register"
+				:to="{ path: '/register', query: authQuery }"
 				class="flex-1 text-center py-3 px-4 rounded-lg font-medium transition-all"
 				:class="
 					!isLoginRoute
@@ -70,8 +77,12 @@
 					v-model="email"
 					placeholder="name@company.com"
 					:disabled="loading"
+					:readonly="isInviteFlow"
 					required
-					class="w-full px-4 py-3 text-gray-900 bg-white border-2 border-gray-200 rounded-xl focus:border-[#0D65AE] focus:outline-none transition-colors disabled:bg-gray-50 disabled:text-gray-500"
+					:class="[
+						'w-full px-4 py-3 text-gray-900 border-2 border-gray-200 rounded-xl focus:border-[#0D65AE] focus:outline-none transition-colors disabled:bg-gray-50 disabled:text-gray-500',
+						isInviteFlow ? 'bg-gray-50 cursor-not-allowed' : 'bg-white',
+					]"
 				/>
 			</div>
 
@@ -201,8 +212,8 @@
 				</div>
 			</div>
 
-			<!-- Company Registration Toggle -->
-			<div class="pt-2">
+			<!-- Company Registration Toggle (hidden during company invite) -->
+			<div v-if="!isInviteFlow" class="pt-2">
 				<label class="flex items-center gap-3 cursor-pointer group">
 					<Checkbox
 						v-model="registerWithCompany"
@@ -377,7 +388,7 @@
 			<p class="text-sm text-gray-600">
 				Already have an account?
 				<router-link
-					to="/login"
+					:to="{ path: '/login', query: authQuery }"
 					class="font-semibold text-[#0D65AE] hover:text-[#0a4f87] transition-colors ml-1"
 				>
 					Sign in
@@ -388,15 +399,39 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useAuth, useToast } from "@/composables";
+import { useAuthStore } from "@/stores/auth.store";
 import { validateEmail, validatePassword } from "@/utils/validators";
+import { canManageCompanyWorkspace } from "@/utils/companyContext";
+import { acceptInvitation } from "@/api/auth.api";
 import Checkbox from "primevue/checkbox";
 
+const route = useRoute();
 const router = useRouter();
-const { register, loading } = useAuth();
+const authStore = useAuthStore();
+const { register, login, getCurrentUser } = useAuth();
 const { showToast } = useToast();
+const loading = computed(() => authStore.state.isLoading);
+
+const isInviteFlow = computed(
+	() =>
+		typeof route.query.inviteToken === "string" &&
+		!!String(route.query.inviteToken).trim(),
+);
+
+const authQuery = computed(() => {
+	const q = route.query;
+	const out = {};
+	if (typeof q.inviteToken === "string" && q.inviteToken) {
+		out.inviteToken = q.inviteToken;
+	}
+	if (typeof q.email === "string" && q.email) {
+		out.email = q.email;
+	}
+	return out;
+});
 
 const name = ref("");
 const email = ref("");
@@ -408,6 +443,27 @@ const registerWithCompany = ref(false);
 const companyName = ref("");
 const companyEmail = ref("");
 const companyPhone = ref("");
+
+watch(
+	isInviteFlow,
+	(inv) => {
+		if (inv) {
+			registerWithCompany.value = false;
+		}
+	},
+	{ immediate: true },
+);
+
+onMounted(() => {
+	const em = route.query.email;
+	if (typeof em === "string" && em) {
+		try {
+			email.value = decodeURIComponent(em);
+		} catch {
+			email.value = em;
+		}
+	}
+});
 
 const isLoginRoute = computed(() => false);
 
@@ -468,19 +524,69 @@ async function handleRegister() {
 		};
 	}
 
-	const success = await register(registrationData);
+	const registrationResult = await register(registrationData);
 
-	if (success) {
+	if (!registrationResult?.success) {
+		return;
+	}
+
+	const tok =
+		typeof route.query.inviteToken === "string"
+			? route.query.inviteToken.trim()
+			: "";
+
+	if (tok) {
+		const loginRes = await login({
+			email: email.value,
+			password: password.value,
+		});
+		if (loginRes?.success) {
+			try {
+				await acceptInvitation(tok, {});
+				await getCurrentUser().catch(() => {});
+				showToast(
+					"success",
+					"Listo",
+					"Cuenta creada y unido a la empresa.",
+				);
+			} catch (accErr) {
+				const m = accErr?.message || "";
+				if (!m.toLowerCase().includes("already a member")) {
+					showToast(
+						"warn",
+						"Invitación",
+						m || "No se pudo aplicar la invitación. Prueba desde el enlace o contacta al administrador.",
+					);
+				}
+			}
+			const u = authStore.state.user;
+			router.replace(canManageCompanyWorkspace(u) ? "/my-company" : "/");
+			return;
+		}
 		showToast(
 			"success",
-			"Registration Successful",
-			"Your account has been created. Redirecting to login...",
+			"Cuenta creada",
+			"Inicia sesión para completar la invitación.",
 		);
-
-		setTimeout(() => {
-			router.push("/login");
-		}, 1500);
+		router.replace({
+			path: "/login",
+			query: {
+				inviteToken: tok,
+				email: encodeURIComponent(email.value),
+			},
+		});
+		return;
 	}
+
+	showToast(
+		"success",
+		"Registration Successful",
+		"Your account has been created. Redirecting to login...",
+	);
+
+	setTimeout(() => {
+		router.push("/login");
+	}, 1500);
 }
 
 function continueWith(provider) {

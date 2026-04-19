@@ -184,8 +184,8 @@
 				<!--  ACTION PANEL — changes per status                            -->
 				<!-- ══════════════════════════════════════════════════════════════ -->
 
-				<!-- ── PENDING: Accept / Reject ──────────────────────────────── -->
-				<div v-if="currentAssignment.status === 'pending'"
+				<!-- ── ASSIGNED / PENDING: confirmar (aceptar o rechazar) ───── -->
+				<div v-if="isAwaitingEmployeeConfirm"
 					class="bg-white rounded-xl border border-yellow-200 p-5 sm:p-6">
 					<div class="flex items-center gap-3 mb-5">
 						<div class="w-9 h-9 rounded-lg bg-yellow-50 flex items-center justify-center flex-shrink-0">
@@ -195,8 +195,10 @@
 							</svg>
 						</div>
 						<div>
-							<h2 class="text-base font-semibold text-gray-900">Requiere tu respuesta</h2>
-							<p class="text-xs text-gray-500">¿Puedes aceptar este trabajo?</p>
+							<h2 class="text-base font-semibold text-gray-900">Confirmar servicio</h2>
+							<p class="text-xs text-gray-500">
+								La empresa te asignó este trabajo. Acepta para poder iniciarlo en sitio, o recházalo si no puedes.
+							</p>
 						</div>
 					</div>
 					<div class="flex flex-col sm:flex-row gap-3">
@@ -243,8 +245,8 @@
 						</div>
 					</div>
 
-					<!-- NFC Verification block (only if location has NFC) -->
-					<div v-if="locationNfcCode" class="rounded-lg bg-purple-50 border border-purple-100 p-4">
+					<!-- NFC: obligatorio (empresa) o hay tag en la ubicación del request -->
+					<div v-if="showNfcStartSection" class="rounded-lg bg-purple-50 border border-purple-100 p-4">
 						<h3 class="text-sm font-semibold text-purple-900 mb-3 flex items-center gap-2">
 							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -269,9 +271,10 @@
 							<span class="text-sm text-red-700">{{ nfcError }}</span>
 						</div>
 
-						<!-- NFC Scan (Web NFC API) -->
+						<!-- Solo lectura física del tag (Web NFC); no hay entrada manual -->
 						<div v-if="nfcSupported && !nfcVerified" class="mb-3">
 							<button
+								type="button"
 								@click="handleNfcScan"
 								:disabled="nfcScanning || actionLoading"
 								class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-purple-700 bg-white border border-purple-300 rounded-lg hover:bg-purple-50 disabled:opacity-60 transition-all"
@@ -284,39 +287,31 @@
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
 										d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
 								</svg>
-								{{ nfcScanning ? 'Esperando etiqueta NFC...' : 'Escanear con NFC' }}
+								{{ nfcScanning ? 'Esperando etiqueta NFC...' : 'Escanear etiqueta NFC' }}
 							</button>
 						</div>
 
-						<!-- Manual NFC Code -->
-						<div v-if="!nfcVerified">
-							<div class="flex gap-2">
-								<input
-									v-model="manualNfcCode"
-									type="text"
-									placeholder="Ingresa el código NFC manualmente"
-									class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0D65AE] focus:border-[#0D65AE] outline-none"
-									@keyup.enter="handleManualNfcVerify"
-								/>
-								<button
-									@click="handleManualNfcVerify"
-									:disabled="!manualNfcCode.trim() || actionLoading"
-									class="px-4 py-2 text-sm font-medium text-white bg-[#0D65AE] rounded-lg hover:bg-[#0D65AE]/90 disabled:opacity-50 transition-all"
-								>
-									Verificar
-								</button>
-							</div>
-							<p class="text-xs text-purple-600 mt-1.5">
-								{{ nfcSupported ? 'O ingresa el código manualmente si no puedes escanear' : 'Tu dispositivo no soporta NFC, ingresa el código manualmente' }}
-							</p>
+						<div
+							v-if="nfcRequiredForStart && !nfcSupported"
+							class="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
+						>
+							Este navegador o dispositivo no permite leer NFC (se requiere Web NFC, p. ej. Chrome en Android).
+							No puedes iniciar el servicio aquí: usa un dispositivo compatible.
 						</div>
+						<p
+							v-else-if="!nfcRequiredForStart && !nfcSupported && !nfcVerified && showNfcStartSection"
+							class="text-xs text-gray-600"
+						>
+							Lectura NFC opcional no disponible en este equipo; puedes iniciar el servicio sin escanear.
+						</p>
 					</div>
 
 					<!-- Start Service Button -->
 					<button
+						type="button"
 						@click="handleStart"
-						:disabled="actionLoading"
-						class="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 text-sm font-semibold text-white bg-[#0D65AE] rounded-lg hover:bg-[#0D65AE]/90 focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 disabled:opacity-60 transition-all"
+						:disabled="actionLoading || cannotStartWithoutWebNfc"
+						class="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 text-sm font-semibold text-white bg-[#0D65AE] rounded-lg hover:bg-[#0D65AE]/90 focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
 					>
 						<svg v-if="actionLoading" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
 							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
@@ -328,10 +323,13 @@
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
 								d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 						</svg>
-						{{ actionLoading ? 'Iniciando...' : 'Iniciar Servicio' }}
+						{{ startPrimaryLabel }}
 					</button>
-					<p v-if="locationNfcCode && !nfcVerified" class="text-xs text-center text-gray-500 -mt-2">
-						Puedes iniciar sin verificar NFC, pero se registrará como no verificado
+					<p
+						v-if="nfcRequiredForStart && nfcSupported && !hasNfcCodeForStart"
+						class="text-xs text-center text-gray-600 -mt-2"
+					>
+						Pulsa Iniciar para abrir el lector y acercar la etiqueta NFC del cliente.
 					</p>
 				</div>
 
@@ -418,6 +416,94 @@
 			</div><!-- /Main Content -->
 		</div><!-- /max-w -->
 	</div><!-- /bg-gray-50 -->
+
+	<!-- ══════════════════════════════════════════════════════════════════════ -->
+	<!--  NFC START MODAL — lector / código antes de iniciar (NFC obligatorio)   -->
+	<!-- ══════════════════════════════════════════════════════════════════════ -->
+	<Teleport to="body">
+		<Transition name="modal">
+			<div
+				v-if="showNfcStartModal"
+				class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+				@click.self="closeNfcStartModal"
+			>
+				<div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+					<div class="flex items-center gap-3 mb-4">
+						<div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+							<svg class="w-5 h-5 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+									d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+							</svg>
+						</div>
+						<div>
+							<h3 class="text-base font-semibold text-gray-900">Lector NFC</h3>
+							<p class="text-xs text-gray-500">
+								Acerca la etiqueta física al teléfono. El código no se puede introducir a mano.
+							</p>
+						</div>
+					</div>
+
+					<div
+						v-if="!nfcSupported"
+						class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-800"
+					>
+						Este dispositivo no puede leer NFC. Usa un móvil con Chrome (Android) u otro navegador compatible con Web NFC.
+					</div>
+
+					<div v-if="nfcVerified" class="flex items-center gap-2 mb-4 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+						<svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+						</svg>
+						<span class="text-sm font-medium text-green-800">Código listo para enviar al iniciar</span>
+					</div>
+
+					<div v-if="nfcError" class="flex items-center gap-2 mb-4 px-3 py-2 bg-red-50 border border-red-100 rounded-lg">
+						<span class="text-sm text-red-700">{{ nfcError }}</span>
+					</div>
+
+					<div v-if="nfcSupported && !nfcVerified" class="mb-4">
+						<button
+							type="button"
+							@click="handleNfcScan"
+							:disabled="nfcScanning || actionLoading"
+							class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-purple-600 rounded-xl hover:bg-purple-700 disabled:opacity-60 transition-all"
+						>
+							<svg v-if="nfcScanning" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+							</svg>
+							<span>{{ nfcScanning ? 'Acerca la etiqueta al dispositivo…' : 'Abrir lector NFC' }}</span>
+						</button>
+						<p class="text-xs text-gray-500 mt-2 text-center">
+							Chrome en Android muestra el diálogo del sistema al acercar la etiqueta.
+						</p>
+					</div>
+
+					<div class="flex flex-col-reverse sm:flex-row gap-3">
+						<button
+							type="button"
+							@click="closeNfcStartModal"
+							class="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+						>
+							Cancelar
+						</button>
+						<button
+							type="button"
+							@click="confirmStartAfterNfc"
+							:disabled="actionLoading || !nfcSupported || !hasNfcCodeForStart"
+							class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-[#0D65AE] rounded-lg hover:bg-[#0D65AE]/90 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							<svg v-if="actionLoading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+							</svg>
+							Iniciar servicio
+						</button>
+					</div>
+				</div>
+			</div>
+		</Transition>
+	</Teleport>
 
 	<!-- ══════════════════════════════════════════════════════════════════════ -->
 	<!--  REJECT MODAL                                                         -->
@@ -543,7 +629,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useEmployeeAssignments } from '@/composables/useEmployeeAssignments';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -579,13 +665,16 @@ const rejectReason = ref('');
 const showCompleteModal = ref(false);
 const completeNotes = ref('');
 
+// NFC obligatorio al inicio: modal con lector
+const showNfcStartModal = ref(false);
+const nfcModalAutoLaunched = ref(false);
+
 // NFC
 const nfcSupported = 'NDEFReader' in window;
 const nfcScanning = ref(false);
 const nfcVerified = ref(false);
 const nfcVerifiedCode = ref('');
 const nfcError = ref('');
-const manualNfcCode = ref('');
 
 // GPS
 const currentCoords = ref(null);
@@ -651,35 +740,82 @@ const locationNfcCode = computed(() => {
 	return loc?.nfcCode || loc?.nfc_code || loc?.nfcTag || null;
 });
 
-// ── Timeline ──────────────────────────────────────────────────────────────────
-const timelineSteps = ['pending', 'accepted', 'in_progress', 'completed'];
+/** Alineado a GET assignment: `nfcRequiredForStart` (default true si no viene el campo). */
+const nfcRequiredForStart = computed(() => {
+	const a = currentAssignment.value;
+	if (!a) return false;
+	if (a.nfcRequiredForStart === false || a.nfc_required_for_start === false) {
+		return false;
+	}
+	return true;
+});
+
+const showNfcStartSection = computed(
+	() => nfcRequiredForStart.value || !!locationNfcCode.value,
+);
+
+/** Código NFC solo tras lectura física exitosa (Web NFC + verify). Sin entrada manual. */
+const hasNfcCodeForStart = computed(
+	() => !!(nfcVerified.value && String(nfcVerifiedCode.value || '').trim()),
+);
+
+/** Empresa exige NFC al inicio y este navegador no implementa Web NFC → no se puede iniciar. */
+const cannotStartWithoutWebNfc = computed(
+	() => nfcRequiredForStart.value && !nfcSupported,
+);
+
+const startPrimaryLabel = computed(() => {
+	if (cannotStartWithoutWebNfc.value) return 'Inicio no disponible (sin NFC)';
+	if (actionLoading.value) return 'Iniciando...';
+	if (nfcRequiredForStart.value && !hasNfcCodeForStart.value && nfcSupported) {
+		return 'Escanear NFC e iniciar';
+	}
+	return 'Iniciar Servicio';
+});
+
+// ── Timeline (alineado a API: assigned → accepted → in_progress → completed) ─
+function assignmentWorkflowIndex(status) {
+	if (status === 'assigned' || status === 'pending') return 0;
+	if (status === 'accepted') return 1;
+	if (status === 'in_progress') return 2;
+	if (status === 'completed') return 3;
+	return -1;
+}
+
+const isAwaitingEmployeeConfirm = computed(() => {
+	const s = currentAssignment.value?.status;
+	return s === 'assigned' || s === 'pending';
+});
 
 const timeline = computed(() => {
 	const status = currentAssignment.value?.status;
-	const currentIdx = timelineSteps.indexOf(status);
-	return [
-		{ key: 'pending', label: 'Pendiente' },
+	const currentIdx = assignmentWorkflowIndex(status);
+	const steps = [
+		{ key: 'confirm', label: 'Por confirmar' },
 		{ key: 'accepted', label: 'Aceptada' },
-		{ key: 'in_progress', label: 'En Progreso' },
+		{ key: 'in_progress', label: 'En curso' },
 		{ key: 'completed', label: 'Completada' },
-	].map((step, idx) => ({
+	];
+	return steps.map((step, idx) => ({
 		...step,
-		done: idx < currentIdx,
-		active: idx === currentIdx,
+		done: currentIdx >= 0 && idx < currentIdx,
+		active: currentIdx >= 0 && idx === currentIdx,
 	}));
 });
 
 // ── Status display helpers ────────────────────────────────────────────────────
 const statusLabels = {
-	pending: 'Pendiente',
+	assigned: 'Por confirmar',
+	pending: 'Por confirmar',
 	accepted: 'Aceptada',
-	in_progress: 'En Progreso',
+	in_progress: 'En curso',
 	completed: 'Completada',
 	rejected: 'Rechazada',
 	cancelled: 'Cancelada',
 };
 
 const statusClasses = {
+	assigned: 'bg-yellow-100 text-yellow-800',
 	pending: 'bg-yellow-100 text-yellow-800',
 	accepted: 'bg-blue-100 text-blue-800',
 	in_progress: 'bg-teal-100 text-teal-800',
@@ -781,13 +917,6 @@ async function handleNfcScan() {
 	}
 }
 
-async function handleManualNfcVerify() {
-	const code = manualNfcCode.value.trim();
-	if (!code) return;
-	nfcError.value = '';
-	await verifyWithCode(code);
-}
-
 async function verifyWithCode(code) {
 	actionLoading.value = true;
 	let coords = currentCoords.value;
@@ -810,26 +939,58 @@ async function verifyWithCode(code) {
 	}
 }
 
-async function handleStart() {
-	actionLoading.value = true;
-	let coords = currentCoords.value;
-	if (!coords) {
-		try {
-			coords = await getCurrentPosition();
-			currentCoords.value = coords;
-		} catch {
-			coords = { latitude: 0, longitude: 0 };
-		}
+function resolveNfcCodeForApi() {
+	if (nfcVerified.value && nfcVerifiedCode.value) {
+		return String(nfcVerifiedCode.value).trim();
 	}
-	const result = await startAssignment(
-		props.id,
-		coords,
-		nfcVerified.value ? nfcVerifiedCode.value : undefined,
-	);
-	actionLoading.value = false;
-	if (result.success) {
-		await loadAssignment();
-		// Auto-start tracking
+	return undefined;
+}
+
+function closeNfcStartModal() {
+	showNfcStartModal.value = false;
+}
+
+/** POST start con GPS; devuelve si el servicio pasó a in_progress. */
+async function runStartService() {
+	actionLoading.value = true;
+	try {
+		let coords = currentCoords.value;
+		if (!coords) {
+			try {
+				coords = await getCurrentPosition();
+				currentCoords.value = coords;
+			} catch {
+				coords = { latitude: 0, longitude: 0 };
+			}
+		}
+		const nfcCode = resolveNfcCodeForApi();
+		const result = await startAssignment(props.id, coords, nfcCode || undefined);
+		if (result.success) {
+			await loadAssignment();
+			return true;
+		}
+		return false;
+	} finally {
+		actionLoading.value = false;
+	}
+}
+
+async function handleStart() {
+	if (cannotStartWithoutWebNfc.value) return;
+	if (nfcRequiredForStart.value && !hasNfcCodeForStart.value) {
+		if (!nfcSupported) return;
+		showNfcStartModal.value = true;
+		return;
+	}
+	const ok = await runStartService();
+	if (ok) beginAutoTracking();
+}
+
+async function confirmStartAfterNfc() {
+	if (!hasNfcCodeForStart.value) return;
+	const ok = await runStartService();
+	if (ok) {
+		showNfcStartModal.value = false;
 		beginAutoTracking();
 	}
 }
@@ -898,6 +1059,24 @@ function formatDate(dateStr) {
 async function loadAssignment() {
 	await fetchMyAssignment(props.id);
 }
+
+watch(showNfcStartModal, async (open) => {
+	if (!open) {
+		nfcModalAutoLaunched.value = false;
+		return;
+	}
+	await nextTick();
+	if (
+		nfcModalAutoLaunched.value ||
+		!nfcSupported ||
+		nfcVerified.value ||
+		hasNfcCodeForStart.value
+	) {
+		return;
+	}
+	nfcModalAutoLaunched.value = true;
+	handleNfcScan();
+});
 
 onMounted(async () => {
 	await loadAssignment();

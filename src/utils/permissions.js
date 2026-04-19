@@ -44,7 +44,7 @@ export const PERMISSIONS = {
 	SERVICE_MANAGE: 'manage_services',
 
 	// Service Request permissions
-	REQUEST_CREATE: 'create_service_request',
+	REQUEST_CREATE: 'create_service_requests',
 	REQUEST_VIEW: 'view_requests',
 	REQUEST_VIEW_OWN: 'view_own_requests',
 	REQUEST_VIEW_ALL: 'view_all_requests',

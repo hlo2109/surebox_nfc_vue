@@ -423,9 +423,14 @@ const usedCategoriesCount = computed(() => {
 
 const averagePrice = computed(() => {
 	if (services.value.length === 0) return "$0.00";
-	const total = services.value.reduce((sum, s) => sum + (s.price || 0), 0);
-	const avg = total / services.value.length;
-	return formatCurrency(avg);
+	const nums = services.value
+		.map((s) => Number(s.base_price ?? s.basePrice ?? s.price ?? 0))
+		.filter((n) => !Number.isNaN(n) && n > 0);
+	if (!nums.length) {
+		return "—";
+	}
+	const total = nums.reduce((a, b) => a + b, 0);
+	return formatCurrency(total / nums.length);
 });
 
 // Methods

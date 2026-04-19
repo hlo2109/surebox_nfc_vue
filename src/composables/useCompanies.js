@@ -468,10 +468,15 @@ export const useCompanies = () => {
 			const response = await companiesApi.createCompanyCategory(companyId, categoryData);
 
 			if (response.success !== false) {
-				const newCategory = response.data || response;
-				companiesStore.addCurrentCompanyCategory(newCategory);
-				toast.showSuccess('Category created successfully!');
-				return { success: true, data: newCategory };
+				const raw = response.data || response;
+				const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+				list.forEach((c) => companiesStore.addCurrentCompanyCategory(c));
+				toast.showSuccess(
+					list.length === 1
+						? 'Category added successfully!'
+						: `${list.length} categories added successfully!`,
+				);
+				return { success: true, data: list };
 			} else {
 				throw new Error(response.message || 'Failed to create category');
 			}
@@ -555,9 +560,8 @@ export const useCompanies = () => {
 			companiesStore.clearError();
 			const response = await companiesApi.updateMyCompany(companyData);
 			if (response.success !== false) {
-				const updatedCompany = response.data || response;
+				const updatedCompany = response.data ?? response;
 				companiesStore.updateCompany(updatedCompany);
-				toast.showSuccess('Company updated successfully!');
 				return { success: true, data: updatedCompany };
 			} else {
 				throw new Error(response.message || 'Failed to update company');
@@ -697,6 +701,27 @@ export const useCompanies = () => {
 			}
 		} catch (error) {
 			const errorMessage = error.message || 'Failed to cancel invitation.';
+			companiesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			companiesStore.setLoading(false);
+		}
+	};
+
+	const resendMyCompanyInvitation = async (invitationId) => {
+		try {
+			companiesStore.setLoading(true);
+			companiesStore.clearError();
+			const response = await companiesApi.resendMyCompanyInvitation(invitationId);
+			if (response.success !== false) {
+				toast.showSuccess(response.message || 'Invitation email sent again.');
+				return { success: true };
+			} else {
+				throw new Error(response.message || 'Failed to resend invitation');
+			}
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to resend invitation.';
 			companiesStore.setError(errorMessage);
 			toast.showError(errorMessage);
 			return { success: false, error: errorMessage };
@@ -887,6 +912,7 @@ export const useCompanies = () => {
 		removeMyCompanyMember,
 		fetchMyCompanyInvitations,
 		cancelMyCompanyInvitation,
+		resendMyCompanyInvitation,
 		fetchMyCompanyLocations,
 		addMyCompanyLocation,
 		updateMyCompanyLocation,

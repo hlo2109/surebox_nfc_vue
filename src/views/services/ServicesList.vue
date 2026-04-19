@@ -140,8 +140,8 @@
 			<div
 				class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 mb-6"
 			>
-				<!-- Row 1: Search + Price Sort -->
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+				<!-- Row 1: Search + sorts + pricing type -->
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
 					<div class="relative">
 						<svg
 							class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
@@ -172,66 +172,49 @@
 						<option value="asc">Price: Low to High</option>
 						<option value="desc">Price: High to Low</option>
 					</select>
+
+					<select
+						v-model="pricingModeFilter"
+						class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all"
+					>
+						<option value="">All pricing types</option>
+						<option value="fixed">Fixed price</option>
+						<option value="quote">Quote / on request</option>
+					</select>
 				</div>
 
-				<!-- Row 2: Category Pills -->
-				<div v-if="categories.length > 0">
-					<div class="flex items-center justify-between mb-2">
-						<p
-							class="text-xs font-semibold text-gray-500 uppercase tracking-wide"
-						>
-							Category
-						</p>
-						<button
-							v-if="categories.length > CATEGORIES_THRESHOLD"
-							@click="showAllCategories = !showAllCategories"
-							class="text-xs font-medium text-[#0D65AE] hover:underline transition-all"
+				<!-- Category (select scales better than pills when list grows) -->
+				<div v-if="categories.length > 0" class="mt-4">
+					<label
+						for="service-category-filter"
+						class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5"
+					>
+						Category
+					</label>
+					<select
+						id="service-category-filter"
+						v-model="selectedCategory"
+						class="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all"
+					>
+						<option value="">All categories</option>
+						<option
+							v-for="category in categories"
+							:key="category.id"
+							:value="String(category.id)"
 						>
 							{{
-								showAllCategories
-									? "Show less"
-									: `Show all (${categories.length})`
+								category.parent_name
+									? `${category.parent_name} — ${category.name}`
+									: category.name
 							}}
-						</button>
-					</div>
-					<div class="flex flex-wrap gap-2">
-						<button
-							@click="
-								selectedCategory = null;
-								currentPage = 1;
-							"
-							:class="[
-								'px-3 py-1.5 text-xs font-medium rounded-full border transition-all',
-								selectedCategory === null
-									? 'bg-[#0D65AE] text-white border-[#0D65AE] shadow-sm'
-									: 'bg-white text-gray-600 border-gray-300 hover:border-[#0D65AE] hover:text-[#0D65AE]',
-							]"
-						>
-							All
-						</button>
-						<button
-							v-for="category in displayedCategories"
-							:key="category.id"
-							@click="
-								selectedCategory = category.id;
-								currentPage = 1;
-							"
-							:class="[
-								'px-3 py-1.5 text-xs font-medium rounded-full border transition-all',
-								selectedCategory === category.id
-									? 'bg-[#0D65AE] text-white border-[#0D65AE] shadow-sm'
-									: 'bg-white text-gray-600 border-gray-300 hover:border-[#0D65AE] hover:text-[#0D65AE]',
-							]"
-						>
-							{{ category.name }}
-						</button>
-					</div>
+						</option>
+					</select>
 				</div>
 			</div>
 
 			<!-- Active filters summary -->
 			<div
-				v-if="selectedCategory || searchQuery || priceSort"
+				v-if="selectedCategory || searchQuery || priceSort || pricingModeFilter"
 				class="flex items-center gap-2 mb-4 flex-wrap"
 			>
 				<span class="text-xs font-medium text-gray-500"
@@ -245,7 +228,7 @@
 					{{ getCategoryName(selectedCategory) }}
 					<button
 						@click="
-							selectedCategory = null;
+							selectedCategory = '';
 							currentPage = 1;
 						"
 						class="ml-0.5 hover:text-[#0a4f87]"
@@ -272,6 +255,36 @@
 					<button
 						@click="searchQuery = ''"
 						class="ml-0.5 hover:text-gray-900"
+					>
+						<svg
+							class="w-3 h-3"
+							fill="currentColor"
+							viewBox="0 0 20 20"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+					</button>
+				</span>
+
+				<span
+					v-if="pricingModeFilter"
+					class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-900 text-xs font-medium rounded-full"
+				>
+					{{
+						pricingModeFilter === "quote"
+							? "Quote only"
+							: "Fixed price only"
+					}}
+					<button
+						@click="
+							pricingModeFilter = '';
+							currentPage = 1;
+						"
+						class="ml-0.5 hover:text-amber-950"
 					>
 						<svg
 							class="w-3 h-3"
@@ -405,21 +418,111 @@
 				>
 					<div
 						v-for="service in sortedServices"
-						:key="service.id"
-						class="bg-white rounded-lg border border-gray-200 hover:border-[#0D65AE] shadow-sm hover:shadow-md transition-all overflow-hidden cursor-pointer"
-						@click="openServiceModal(service)"
+						:key="service.uuid || service.id"
+						class="bg-white rounded-xl border border-gray-200 hover:border-[#0D65AE] shadow-sm hover:shadow-lg transition-all overflow-hidden flex flex-col group"
 					>
-						<div class="p-5">
-							<div class="flex items-start justify-between mb-3">
+						<!-- Hero image -->
+						<div
+							class="relative h-44 bg-gradient-to-br from-slate-100 to-slate-200 cursor-pointer shrink-0"
+							@click="openServiceModal(service)"
+						>
+							<img
+								v-if="serviceCoverUrl(service)"
+								:src="serviceCoverUrl(service)"
+								:alt="service.name"
+								class="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+								loading="lazy"
+							/>
+							<div
+								v-else
+								class="w-full h-full flex items-center justify-center text-slate-400"
+							>
+								<svg
+									class="w-14 h-14 opacity-60"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="1.5"
+										d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+									/>
+								</svg>
+							</div>
+							<button
+								type="button"
+								@click.stop="toggleFavorite(service)"
+								class="absolute top-2 right-2 p-2 rounded-full bg-white/90 shadow-md hover:bg-white text-amber-500 hover:text-amber-600 transition-colors"
+								:title="
+									service.isFavorite
+										? 'Remove from favorites'
+										: 'Add to favorites'
+								"
+							>
+								<svg
+									v-if="service.isFavorite"
+									class="w-5 h-5 fill-current"
+									viewBox="0 0 24 24"
+								>
+									<path
+										d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+									/>
+								</svg>
+								<svg
+									v-else
+									class="w-5 h-5 stroke-current fill-none"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-width="1.8"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M12 3l1.9 3.85L18 8.5l-4.1 4 1 5.9L12 16.9 7.1 18.4l1-5.9L4 8.5l4.1-.65L12 3z"
+									/>
+								</svg>
+							</button>
+							<span
+								v-if="service.promotion?.enabled"
+								class="absolute top-2 left-2 inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-600 text-white shadow"
+							>
+								Promo
+							</span>
+							<span
+								class="absolute bottom-2 left-2 inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold shadow"
+								:class="
+									service.pricingMode === 'quote'
+										? 'bg-amber-900/90 text-amber-50'
+										: 'bg-[#0D65AE]/90 text-white'
+								"
+							>
+								{{
+									service.pricingMode === "quote"
+										? "Quote"
+										: "Fixed price"
+								}}
+							</span>
+						</div>
+
+						<div
+							class="p-5 flex-1 flex flex-col cursor-pointer"
+							@click="openServiceModal(service)"
+						>
+							<div class="flex items-start justify-between gap-2 mb-2">
 								<div class="flex-1 min-w-0">
 									<h3
-										class="text-lg font-semibold text-gray-900 mb-1 truncate"
+										class="text-lg font-semibold text-gray-900 truncate"
 									>
 										{{ service.name }}
 									</h3>
-									<div
-										class="flex items-center gap-2 flex-wrap"
-									>
+									<div class="flex items-center gap-2 flex-wrap mt-1">
+										<span
+											v-if="service.isFavorite"
+											class="text-[10px] font-bold uppercase tracking-wide text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded"
+										>
+											Favorite
+										</span>
 										<span
 											v-if="
 												getServiceCategoryName(service)
@@ -441,12 +544,13 @@
 										</span>
 									</div>
 								</div>
-
-								<!-- 3-dots Action Menu -->
-								<div class="relative ml-2 flex-shrink-0">
+								<div class="relative flex-shrink-0">
 									<button
+										type="button"
 										@click.stop="
-											toggleActionMenu(service.id)
+											toggleActionMenu(
+												service.uuid || service.id,
+											)
 										"
 										class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
 										title="More actions"
@@ -461,113 +565,98 @@
 											/>
 										</svg>
 									</button>
-
 									<div
-										v-if="activeMenu === service.id"
+										v-if="
+											activeMenu ===
+											(service.uuid || service.id)
+										"
 										v-click-outside="closeActionMenu"
-										class="absolute right-0 mt-1 z-50 bg-white rounded-lg border border-gray-200 shadow-lg py-1 min-w-[176px]"
+										class="absolute right-0 mt-1 z-50 bg-white rounded-lg border border-gray-200 shadow-lg py-1 min-w-[188px]"
 									>
 										<button
+											type="button"
+											@click.stop="
+												goToServicePage(service);
+												activeMenu = null;
+											"
+											class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+										>
+											Open full page
+										</button>
+										<button
+											type="button"
 											@click.stop="
 												openServiceModal(service);
 												activeMenu = null;
 											"
-											class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors"
+											class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
 										>
-											<svg
-												class="w-4 h-4 text-gray-400"
-												fill="none"
-												stroke="currentColor"
-												viewBox="0 0 24 24"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-												/>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-												/>
-											</svg>
-											View Details
+											Quick view
 										</button>
 										<button
+											type="button"
 											@click.stop="
 												requestService(service);
 												activeMenu = null;
 											"
-											class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors"
+											class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
 										>
-											<svg
-												class="w-4 h-4 text-gray-400"
-												fill="none"
-												stroke="currentColor"
-												viewBox="0 0 24 24"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-												/>
-											</svg>
-											Request Service
+											Request service
 										</button>
 									</div>
 								</div>
 							</div>
 
-							<!-- Description -->
+							<p
+								v-if="promotionSummary(service)"
+								class="text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-2 py-1.5 mb-2"
+							>
+								{{ promotionSummary(service) }}
+							</p>
+
 							<p
 								v-if="service.description"
-								class="text-sm text-gray-600 line-clamp-2 mb-4"
+								class="text-sm text-gray-600 line-clamp-2 mb-3 flex-1"
 							>
 								{{ service.description }}
 							</p>
 
-							<!-- Price and Duration -->
 							<div
-								class="flex items-center justify-between pt-3 border-t border-gray-100"
+								class="flex items-center justify-between pt-3 mt-auto border-t border-gray-100"
 							>
-								<div class="flex items-center gap-1.5">
-									<svg
-										class="w-5 h-5 text-gray-400"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
+								<div class="min-w-0">
+									<p
+										v-if="service.pricingMode === 'quote'"
+										class="text-base font-bold text-amber-900 truncate"
 									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-										/>
-									</svg>
-									<span
-										v-if="
+										{{
+											service.price != null
+												? `From ${formatPrice(service.price)}`
+												: "Quote on request"
+										}}
+									</p>
+									<p
+										v-else-if="
 											service.price !== null &&
 											service.price !== undefined
 										"
-										class="text-lg font-semibold text-[#0D65AE]"
+										class="text-base font-bold text-[#0D65AE] truncate"
 									>
 										{{ formatPrice(service.price) }}
-									</span>
-									<span
+									</p>
+									<p
 										v-else
 										class="text-sm text-gray-400 italic"
-										>Price on request</span
 									>
+										Price on request
+									</p>
 								</div>
 								<div
 									v-if="service.duration"
-									class="flex items-center gap-1.5"
+									class="flex items-center gap-1 text-sm text-gray-600 flex-shrink-0 ml-2"
 								>
 									<svg
-										class="w-5 h-5 text-gray-400"
+										class="w-4 h-4 text-gray-400"
 										fill="none"
 										stroke="currentColor"
 										viewBox="0 0 24 24"
@@ -579,84 +668,60 @@
 											d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
 										/>
 									</svg>
-									<span class="text-sm text-gray-600">{{
-										formatDuration(service.duration)
-									}}</span>
+									{{ formatDuration(service.duration) }}
 								</div>
 							</div>
 
-							<!-- Company Info -->
 							<div
 								v-if="
 									service.companyName || service.company?.name
 								"
-								class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100"
+								class="mt-3 pt-3 border-t border-gray-100"
 							>
-								<svg
-									class="w-4 h-4 text-gray-400"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
+								<button
+									type="button"
+									@click.stop="openCompanyPreview(service)"
+									class="inline-flex items-center gap-2 text-sm font-semibold text-[#0D65AE] hover:text-[#0a4f87] hover:underline text-left"
 								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-									/>
-								</svg>
-								<span class="text-sm text-gray-600">{{
-									service.companyName || service.company?.name
-								}}</span>
+									<svg
+										class="w-4 h-4 flex-shrink-0"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+										/>
+									</svg>
+									<span class="truncate">{{
+										service.companyName ||
+										service.company?.name
+									}}</span>
+								</button>
+								<p class="text-[11px] text-gray-400 mt-0.5">
+									Tap for company profile
+								</p>
 							</div>
 						</div>
 
-						<!-- Card Footer -->
 						<div
-							class="bg-gray-50 px-5 py-3 border-t border-gray-200 flex items-center gap-2"
+							class="bg-gray-50 px-4 py-3 border-t border-gray-200 flex gap-2"
 						>
 							<button
-								@click.stop="openServiceModal(service)"
-								class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-[#0D65AE] hover:bg-[#0D65AE] hover:text-white border border-[#0D65AE] rounded-lg transition-all"
+								type="button"
+								@click.stop="goToServicePage(service)"
+								class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-[#0D65AE] border border-[#0D65AE] rounded-lg hover:bg-[#0D65AE] hover:text-white transition-all"
 							>
-								<svg
-									class="w-4 h-4"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-									/>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-									/>
-								</svg>
-								View Details
+								Full page
 							</button>
 							<button
+								type="button"
 								@click.stop="requestService(service)"
-								class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#0D65AE] hover:bg-[#0a4f87] rounded-lg transition-all"
+								class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-[#0D65AE] hover:bg-[#0a4f87] rounded-lg transition-all"
 							>
-								<svg
-									class="w-4 h-4"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-									/>
-								</svg>
 								Request
 							</button>
 						</div>
@@ -844,7 +909,17 @@
 										Price
 									</p>
 									<p
-										v-if="
+										v-if="selectedService.pricingMode === 'quote'"
+										class="text-xl font-bold text-amber-800"
+									>
+										{{
+											selectedService.price != null
+												? `From ${formatPrice(selectedService.price)}`
+												: "Quote on request"
+										}}
+									</p>
+									<p
+										v-else-if="
 											selectedService.price !== null &&
 											selectedService.price !== undefined
 										"
@@ -1218,13 +1293,30 @@
 							</div>
 							<div
 								v-if="
-									requestingService?.price !== null &&
-									requestingService?.price !== undefined
+									requestingService?.pricingMode === 'quote' ||
+									(requestingService?.price !== null &&
+										requestingService?.price !== undefined)
 								"
 								class="text-right flex-shrink-0"
 							>
-								<p class="text-xs text-gray-500">From</p>
-								<p class="font-bold text-[#0D65AE]">
+								<p class="text-xs text-gray-500">
+									{{
+										requestingService?.pricingMode === "quote"
+											? "Pricing"
+											: "From"
+									}}
+								</p>
+								<p
+									v-if="requestingService?.pricingMode === 'quote'"
+									class="font-bold text-amber-800"
+								>
+									{{
+										requestingService.price != null
+											? `From ${formatPrice(requestingService.price)}`
+											: "Quote"
+									}}
+								</p>
+								<p v-else class="font-bold text-[#0D65AE]">
 									{{ formatPrice(requestingService.price) }}
 								</p>
 							</div>
@@ -1482,6 +1574,218 @@
 			</div>
 		</Transition>
 	</Teleport>
+
+	<!-- Company profile (catalogue preview) -->
+	<Teleport to="body">
+		<Transition name="modal">
+			<div
+				v-if="companyPreviewOpen"
+				class="fixed inset-0 z-[70] flex items-center justify-center p-4"
+				@click.self="closeCompanyPreview"
+			>
+				<div
+					class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+					@click="closeCompanyPreview"
+				></div>
+				<div
+					class="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl"
+					@click.stop
+				>
+					<div
+						class="relative overflow-hidden rounded-t-2xl bg-gradient-to-br from-[#0D65AE] to-slate-900 px-6 py-8 text-white"
+					>
+						<button
+							type="button"
+							@click="closeCompanyPreview"
+							class="absolute top-3 right-3 p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+							aria-label="Close"
+						>
+							<svg
+								class="w-5 h-5"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M6 18L18 6M6 6l12 12"
+								/>
+							</svg>
+						</button>
+						<div class="flex items-start gap-4 pr-10">
+							<div
+								class="w-16 h-16 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center overflow-hidden flex-shrink-0"
+							>
+								<img
+									v-if="companyPreview?.logo"
+									:src="companyPreview.logo"
+									:alt="companyPreview.name"
+									class="w-full h-full object-cover"
+								/>
+								<svg
+									v-else
+									class="w-8 h-8 text-white/80"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="1.5"
+										d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+									/>
+								</svg>
+							</div>
+							<div class="min-w-0">
+								<h2 class="text-2xl font-bold leading-tight">
+									{{ companyPreview?.name || "Company" }}
+								</h2>
+								<p
+									v-if="companyPreview?.serviceCount != null"
+									class="text-sm text-white/80 mt-1"
+								>
+									{{ companyPreview.serviceCount }} service{{
+										companyPreview.serviceCount !== 1
+											? "s"
+											: ""
+									}}
+									in catalogue
+								</p>
+							</div>
+						</div>
+					</div>
+
+					<div class="p-6 space-y-5">
+						<div
+							v-if="companyPreviewLoading"
+							class="flex items-center gap-2 text-gray-600 text-sm"
+						>
+							<div
+								class="animate-spin rounded-full h-5 w-5 border-2 border-[#0D65AE] border-t-transparent"
+							></div>
+							Loading profile…
+						</div>
+						<p
+							v-else-if="companyPreviewError"
+							class="text-sm text-red-600"
+						>
+							{{ companyPreviewError }}
+						</p>
+						<template v-else-if="companyPreview">
+							<p
+								v-if="companyPreview.description"
+								class="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap"
+							>
+								{{ companyPreview.description }}
+							</p>
+							<div
+								v-if="
+									companyPreview.email ||
+									companyPreview.phone ||
+									companyPreview.address
+								"
+								class="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-2 text-sm"
+							>
+								<p
+									v-if="companyPreview.email"
+									class="text-gray-800"
+								>
+									<span class="text-gray-500">Email:</span>
+									{{ companyPreview.email }}
+								</p>
+								<p
+									v-if="companyPreview.phone"
+									class="text-gray-800"
+								>
+									<span class="text-gray-500">Phone:</span>
+									{{ companyPreview.phone }}
+								</p>
+								<p
+									v-if="companyPreview.address"
+									class="text-gray-800"
+								>
+									<span class="text-gray-500">Address:</span>
+									{{ companyPreview.address }}
+								</p>
+								<p
+									v-if="
+										companyPreview.city || companyPreview.country
+									"
+									class="text-gray-600"
+								>
+									{{ companyPreview.city }}
+									<span v-if="companyPreview.city && companyPreview.country"
+										>, </span
+									>{{ companyPreview.country }}
+								</p>
+							</div>
+							<div v-if="companyPreview.locations?.length">
+								<h3
+									class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2"
+								>
+									Locations
+								</h3>
+								<ul class="space-y-2">
+									<li
+										v-for="(loc, i) in companyPreview.locations"
+										:key="loc.uuid || i"
+										class="text-sm border border-gray-100 rounded-lg px-3 py-2"
+									>
+										<p class="font-medium text-gray-900">
+											{{ loc.name }}
+											<span
+												v-if="loc.isPrimary"
+												class="ml-1 text-[10px] uppercase text-[#0D65AE] font-bold"
+												>HQ</span
+											>
+										</p>
+										<p
+											v-if="loc.address"
+											class="text-gray-600 text-xs mt-0.5"
+										>
+											{{ loc.address }}
+										</p>
+										<p
+											v-if="
+												loc.cityName ||
+												loc.departmentName ||
+												loc.countryName
+											"
+											class="text-gray-400 text-xs mt-0.5"
+										>
+											{{
+												[
+													loc.cityName,
+													loc.departmentName,
+													loc.countryName,
+												]
+													.filter(Boolean)
+													.join(" · ")
+											}}
+										</p>
+									</li>
+								</ul>
+							</div>
+						</template>
+					</div>
+					<div
+						class="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 rounded-b-2xl"
+					>
+						<button
+							type="button"
+							@click="closeCompanyPreview"
+							class="w-full py-2.5 text-sm font-semibold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+						>
+							Close
+						</button>
+					</div>
+				</div>
+			</div>
+		</Transition>
+	</Teleport>
 </template>
 
 <script setup>
@@ -1495,8 +1799,15 @@ import {
 	formatDuration,
 	formatStatus,
 } from "@/utils/formatters";
+import { useToast } from "@/composables/useToast";
+import {
+	getCompanyCatalog,
+	addServiceFavorite,
+	removeServiceFavorite,
+} from "@/api/services.api";
 
 const router = useRouter();
+const { showError, showSuccess } = useToast();
 
 const {
 	state,
@@ -1507,20 +1818,16 @@ const {
 	fetchServices,
 } = useServices();
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const CATEGORIES_THRESHOLD = 8;
-
 // ─── Local state ──────────────────────────────────────────────────────────────
 
 const loading = ref(false);
 const searchQuery = ref("");
-const selectedCategory = ref(null);
+const selectedCategory = ref("");
 const priceSort = ref("");
+const pricingModeFilter = ref("");
 const currentPage = ref(1);
 const pageSize = ref(12);
 const totalItems = ref(0);
-const showAllCategories = ref(false);
 const activeMenu = ref(null);
 const selectedService = ref(null);
 
@@ -1545,6 +1852,11 @@ let searchDebounceTimer = null;
 const { fetchMyNfcTags } = useNfc();
 const { createServiceRequest } = useServiceRequests();
 
+const companyPreviewOpen = ref(false);
+const companyPreviewLoading = ref(false);
+const companyPreview = ref(null);
+const companyPreviewError = ref("");
+
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const services = ref([]);
@@ -1556,23 +1868,20 @@ const activeServicesCount = computed(
 	() => services.value.filter((s) => s.status === "active").length,
 );
 
-const displayedCategories = computed(() => {
-	if (
-		showAllCategories.value ||
-		categories.value.length <= CATEGORIES_THRESHOLD
-	) {
-		return categories.value;
-	}
-	return categories.value.slice(0, CATEGORIES_THRESHOLD);
-});
-
 const sortedServices = computed(() => {
-	if (!priceSort.value) return services.value;
-	return [...services.value].sort((a, b) =>
-		priceSort.value === "asc"
-			? (a.price ?? 0) - (b.price ?? 0)
-			: (b.price ?? 0) - (a.price ?? 0),
-	);
+	const list = [...services.value];
+	const favFirst = (a, b) =>
+		Number(!!b.isFavorite) - Number(!!a.isFavorite);
+	if (!priceSort.value) {
+		return list.sort(favFirst);
+	}
+	return list.sort((a, b) => {
+		const f = favFirst(a, b);
+		if (f !== 0) return f;
+		const pa = a.price ?? 0;
+		const pb = b.price ?? 0;
+		return priceSort.value === "asc" ? pa - pb : pb - pa;
+	});
 });
 
 const totalPages = computed(() => Math.ceil(totalItems.value / pageSize.value));
@@ -1590,11 +1899,16 @@ const visiblePages = computed(() => {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const getCategoryName = (categoryId) => {
-	if (!categoryId) return "";
+	if (categoryId === null || categoryId === undefined || categoryId === "") {
+		return "";
+	}
+	const key = String(categoryId);
 	const cat = categories.value.find(
-		(c) => c.id === categoryId || c.uuid === categoryId,
+		(c) => String(c.id) === key || (c.uuid != null && String(c.uuid) === key),
 	);
-	return cat?.name || "";
+	if (!cat?.name) return "";
+	if (cat.parent_name) return `${cat.parent_name} — ${cat.name}`;
+	return cat.name;
 };
 
 /**
@@ -1619,12 +1933,94 @@ const getStatusClass = (status) => {
 
 const formatPrice = (price) => formatCurrency(price);
 
+const serviceCoverUrl = (service) => {
+	const p = service?.photos;
+	if (Array.isArray(p) && p.length > 0 && p[0]) return p[0];
+	return null;
+};
+
+const promotionSummary = (service) => {
+	const pr = service?.promotion;
+	if (!pr || !pr.enabled) return "";
+	const was = formatPrice(pr.compareAt);
+	const now = formatPrice(pr.price);
+	const lbl = pr.label ? ` · ${pr.label}` : "";
+	return `Promo: was ${was} → now ${now}${lbl}`;
+};
+
+const openCompanyPreview = async (service) => {
+	const uuid =
+		service.companyUuid ||
+		service.company_uuid ||
+		service.company?.uuid ||
+		null;
+	if (!uuid) {
+		showError("Company information is not available for this service.");
+		return;
+	}
+	companyPreviewOpen.value = true;
+	companyPreviewLoading.value = true;
+	companyPreview.value = null;
+	companyPreviewError.value = "";
+	document.body.style.overflow = "hidden";
+	try {
+		const res = await getCompanyCatalog(uuid);
+		const data = res?.data ?? res;
+		if (res?.success === false || !data) {
+			throw new Error(res?.message || "Could not load company profile");
+		}
+		companyPreview.value = data;
+	} catch (e) {
+		companyPreviewError.value = e.message || "Could not load company profile";
+		showError(companyPreviewError.value);
+	} finally {
+		companyPreviewLoading.value = false;
+	}
+};
+
+const closeCompanyPreview = () => {
+	companyPreviewOpen.value = false;
+	companyPreview.value = null;
+	companyPreviewError.value = "";
+	if (!selectedService.value && !showRequestModal.value) {
+		document.body.style.overflow = "";
+	}
+};
+
+const toggleFavorite = async (service) => {
+	const sid = service.uuid || service.id;
+	if (!sid) return;
+	const next = !service.isFavorite;
+	service.isFavorite = next;
+	try {
+		if (next) {
+			await addServiceFavorite(sid);
+			showSuccess("Saved to your favorites");
+		} else {
+			await removeServiceFavorite(sid);
+			showSuccess("Removed from favorites");
+		}
+		await loadServices();
+	} catch (e) {
+		service.isFavorite = !next;
+		showError(e.message || "Could not update favorites");
+	}
+};
+
+const goToServicePage = (service) => {
+	const id = service.uuid || service.id;
+	if (!id) return;
+	router.push({ name: "ServiceDetail", params: { id: String(id) } });
+	activeMenu.value = null;
+};
+
 // ─── Filters ──────────────────────────────────────────────────────────────────
 
 const clearFilters = () => {
 	searchQuery.value = "";
-	selectedCategory.value = null;
+	selectedCategory.value = "";
 	priceSort.value = "";
+	pricingModeFilter.value = "";
 	currentPage.value = 1;
 };
 
@@ -1637,12 +2033,15 @@ const openServiceModal = (service) => {
 
 const closeServiceModal = () => {
 	selectedService.value = null;
-	document.body.style.overflow = "";
+	if (!showRequestModal.value && !companyPreviewOpen.value) {
+		document.body.style.overflow = "";
+	}
 };
 
 const handleKeydown = (e) => {
 	if (e.key === "Escape") {
 		if (showRequestModal.value) closeRequestModal();
+		else if (companyPreviewOpen.value) closeCompanyPreview();
 		else if (selectedService.value) closeServiceModal();
 	}
 };
@@ -1676,7 +2075,7 @@ const closeRequestModal = () => {
 	showRequestModal.value = false;
 	requestingService.value = null;
 	requestError.value = "";
-	if (!selectedService.value) {
+	if (!selectedService.value && !companyPreviewOpen.value) {
 		document.body.style.overflow = "";
 	}
 };
@@ -1687,13 +2086,7 @@ const submitServiceRequest = async () => {
 	requestError.value = "";
 	requestLoading.value = true;
 
-	try {
-		// Debug: log the full service object so we can see what fields the API returns
-		console.log(
-			"[RequestService] raw service object:",
-			JSON.parse(JSON.stringify(requestingService.value)),
-		);
-
+		try {
 		const serviceId =
 			requestingService.value.uuid || requestingService.value.id || null;
 
@@ -1704,13 +2097,6 @@ const submitServiceRequest = async () => {
 			requestingService.value.companyId ||
 			requestingService.value.company_id ||
 			null;
-
-		console.log(
-			"[RequestService] resolved serviceId:",
-			serviceId,
-			"companyId:",
-			companyId,
-		);
 
 		if (!serviceId || !companyId) {
 			requestError.value =
@@ -1813,7 +2199,12 @@ const normalizeService = (raw) => {
 
 	return {
 		...raw,
+		uuid: raw.uuid || raw.id,
 		id: raw.uuid || raw.id,
+		pricingMode: raw.pricing_mode || raw.pricingMode || "fixed",
+		isFavorite: !!(raw.is_favorite ?? raw.isFavorite),
+		photos: Array.isArray(raw.photos) ? raw.photos : [],
+		promotion: raw.promotion || null,
 		price: price !== null && !isNaN(price) ? price : null,
 		companyName: raw.companyName || raw.company?.name || null,
 		// Preserve every possible company UUID variant the API might return
@@ -1841,7 +2232,12 @@ const loadServices = async () => {
 			limit: pageSize.value,
 		};
 		if (searchQuery.value.trim()) params.search = searchQuery.value.trim();
-		if (selectedCategory.value) params.categoryId = selectedCategory.value;
+		if (selectedCategory.value) {
+			params.masterCategoryUuid = selectedCategory.value;
+		}
+		if (pricingModeFilter.value === "fixed" || pricingModeFilter.value === "quote") {
+			params.pricingMode = pricingModeFilter.value;
+		}
 
 		const result = await fetchServices(params);
 
@@ -1864,7 +2260,9 @@ const loadServices = async () => {
 const loadData = async () => {
 	loading.value = true;
 	try {
-		const categoriesResult = await fetchServiceCategories();
+		const categoriesResult = await fetchServiceCategories({
+			scope: "master",
+		});
 		if (categoriesResult.success) {
 			categories.value = (categoriesResult.data || []).map((cat) => ({
 				...cat,
@@ -1890,6 +2288,11 @@ watch(searchQuery, () => {
 });
 
 watch(selectedCategory, () => {
+	currentPage.value = 1;
+	loadServices();
+});
+
+watch(pricingModeFilter, () => {
 	currentPage.value = 1;
 	loadServices();
 });

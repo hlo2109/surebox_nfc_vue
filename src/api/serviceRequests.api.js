@@ -194,9 +194,9 @@ export const verifyAssignmentNfc = async (assignmentId, nfcData) => {
 /**
  * Start an assignment (begin service execution)
  * @param {string} assignmentId - Assignment UUID
- * @param {object} startData - Start data
- * @param {number} startData.latitude - Current latitude
- * @param {number} startData.longitude - Current longitude
+ * @param {object} startData - Start data (API body)
+ * @param {number} startData.lat - Current latitude
+ * @param {number} startData.lng - Current longitude
  * @param {string} [startData.nfcCode] - Optional NFC code for on-start verification
  * @returns {Promise<object>} Updated assignment
  */
@@ -213,8 +213,8 @@ export const startAssignment = async (assignmentId, startData) => {
  * Complete an assignment (finish service execution)
  * @param {string} assignmentId - Assignment UUID
  * @param {object} completeData - Completion data
- * @param {number} completeData.latitude - Current latitude
- * @param {number} completeData.longitude - Current longitude
+ * @param {number} completeData.lat - Current latitude
+ * @param {number} completeData.lng - Current longitude
  * @param {string} [completeData.notes] - Optional completion notes
  * @returns {Promise<object>} Updated assignment
  */

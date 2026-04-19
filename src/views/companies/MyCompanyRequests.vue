@@ -509,151 +509,129 @@
 				</p>
 			</div>
 
-			<!-- Requests Grid -->
-			<div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-				<div
-					v-for="request in paginatedRequests"
-					:key="request.id"
-					class="bg-white rounded-xl border border-gray-200 hover:border-[#0D65AE] hover:shadow-lg transition-all p-5 sm:p-6 cursor-pointer group"
-					@click="openModal(request)"
-				>
-					<!-- Card Header -->
-					<div class="flex items-start justify-between mb-3">
-						<div class="flex-1 min-w-0">
-							<h3
-								class="font-semibold text-lg text-gray-900 group-hover:text-[#0D65AE] transition-colors line-clamp-1 mb-0.5"
-							>
-								{{
-									request.serviceName ||
-									request.service?.name ||
-									"Service Request"
-								}}
-							</h3>
-							<p
-								class="text-sm text-gray-600 flex items-center gap-1"
-							>
-								<svg
-									class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
-									fill="none"
-									stroke="currentColor"
-									viewBox="0 0 24 24"
+			<!-- Requests table -->
+			<div
+				v-else
+				class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm"
+			>
+				<div class="overflow-x-auto">
+					<table class="min-w-full text-sm text-left">
+						<thead
+							class="bg-gray-50 text-gray-600 font-medium border-b border-gray-200"
+						>
+							<tr>
+								<th class="px-4 py-3 whitespace-nowrap">Service</th>
+								<th class="px-4 py-3 whitespace-nowrap">Customer</th>
+								<th
+									class="px-4 py-3 whitespace-nowrap hidden sm:table-cell"
 								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-									/>
-								</svg>
-								<span class="truncate">{{
-									request.customerName ||
-									request.customer?.name ||
-									"Unknown customer"
-								}}</span>
-							</p>
-						</div>
-						<span
-							:class="[
-								'flex-shrink-0 ml-3 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium',
-								getStatusColor(request.status),
-							]"
-						>
-							{{ formatStatus(request.status) }}
-						</span>
-					</div>
-
-					<!-- Notes -->
-					<p
-						v-if="request.notes || request.description"
-						class="text-sm text-gray-500 line-clamp-2 mb-3"
-					>
-						{{ request.notes || request.description }}
-					</p>
-
-					<!-- Meta row -->
-					<div class="space-y-1.5 mb-4">
-						<div
-							v-if="request.preferredDate"
-							class="flex items-center gap-2 text-sm text-gray-600"
-						>
-							<svg
-								class="w-4 h-4 text-gray-400 flex-shrink-0"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
+									Assignee
+								</th>
+								<th class="px-4 py-3 whitespace-nowrap">Status</th>
+								<th class="px-4 py-3 whitespace-nowrap hidden md:table-cell">
+									Preferred
+								</th>
+								<th class="px-4 py-3 whitespace-nowrap hidden lg:table-cell">
+									Submitted
+								</th>
+								<th class="px-4 py-3 text-right whitespace-nowrap">Actions</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-gray-100">
+							<tr
+								v-for="request in paginatedRequests"
+								:key="request.uuid"
+								class="hover:bg-gray-50/80 cursor-pointer transition-colors"
+								@click="openModal(request)"
 							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-								/>
-							</svg>
-							<span
-								>Preferred:
-								{{ formatDate(request.preferredDate) }}</span
-							>
-						</div>
-						<div
-							v-if="request.createdAt || request.created_at"
-							class="flex items-center gap-2 text-sm text-gray-600"
-						>
-							<svg
-								class="w-4 h-4 text-gray-400 flex-shrink-0"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-								/>
-							</svg>
-							<span
-								>Submitted
-								{{
-									formatDate(
-										request.createdAt || request.created_at,
-									)
-								}}</span
-							>
-						</div>
-					</div>
-
-					<!-- Footer -->
-					<div
-						class="flex items-center justify-between pt-3 border-t border-gray-100"
-					>
-						<span class="text-xs text-gray-400"
-							>Request #{{ request.id }}</span
-						>
-						<button
-							@click.stop="
-								router.push({
-									name: 'RequestDetail',
-									params: { id: request.uuid },
-								})
-							"
-							class="inline-flex items-center gap-1 text-xs font-medium text-[#0D65AE] group-hover:gap-2 transition-all hover:underline"
-						>
-							View Details
-							<svg
-								class="w-3.5 h-3.5"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M9 5l7 7-7 7"
-								/>
-							</svg>
-						</button>
-					</div>
+								<td class="px-4 py-3 align-top">
+									<div class="font-medium text-gray-900 max-w-[200px] sm:max-w-xs truncate">
+										{{
+											request.serviceName ||
+											request.service?.name ||
+											"Service"
+										}}
+									</div>
+									<div
+										v-if="request.notes || request.description"
+										class="text-xs text-gray-500 line-clamp-1 mt-0.5 max-w-[220px] sm:max-w-md"
+									>
+										{{ request.notes || request.description }}
+									</div>
+								</td>
+								<td class="px-4 py-3 align-top text-gray-700 max-w-[140px] truncate">
+									{{
+										request.customerName ||
+										request.customer?.name ||
+										"—"
+									}}
+									<div
+										v-if="
+											request.customerEmail ||
+											request.customer_email
+										"
+										class="text-xs text-gray-500 truncate mt-0.5"
+									>
+										{{
+											request.customerEmail ||
+												request.customer_email
+										}}
+									</div>
+								</td>
+								<td
+									class="px-4 py-3 align-top text-gray-600 max-w-[160px] truncate hidden sm:table-cell text-xs"
+									:title="formatAssigneesLine(request, false)"
+								>
+									{{ formatAssigneesLine(request) }}
+								</td>
+								<td class="px-4 py-3 align-top">
+									<span
+										:class="[
+											'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
+											getStatusColor(request.status),
+										]"
+									>
+										{{ formatStatus(request.status) }}
+									</span>
+								</td>
+								<td class="px-4 py-3 align-top text-gray-600 hidden md:table-cell whitespace-nowrap">
+									{{
+										request.preferredDate
+											? formatDate(request.preferredDate)
+											: "—"
+									}}
+								</td>
+								<td class="px-4 py-3 align-top text-gray-600 hidden lg:table-cell whitespace-nowrap">
+									{{
+										formatDate(
+											request.createdAt || request.created_at,
+										) || "—"
+									}}
+								</td>
+								<td class="px-4 py-3 align-top text-right whitespace-nowrap">
+									<button
+										type="button"
+										@click.stop="openModal(request)"
+										class="text-[#0D65AE] hover:underline font-medium text-xs sm:text-sm mr-2"
+									>
+										Detail
+									</button>
+									<button
+										type="button"
+										@click.stop="
+											router.push({
+												name: 'RequestDetail',
+												params: { id: request.uuid },
+											})
+										"
+										class="text-gray-600 hover:text-gray-900 text-xs sm:text-sm"
+									>
+										Page
+									</button>
+								</td>
+							</tr>
+						</tbody>
+					</table>
 				</div>
 			</div>
 
@@ -819,6 +797,30 @@
 												"—"
 											}}
 										</p>
+										<p
+											v-if="
+												selectedRequest.customerEmail ||
+												selectedRequest.customer_email
+											"
+											class="text-xs text-gray-600 mt-1"
+										>
+											{{
+												selectedRequest.customerEmail ||
+													selectedRequest.customer_email
+											}}
+										</p>
+										<p
+											v-if="
+												selectedRequest.customerPhone ||
+												selectedRequest.customer_phone
+											"
+											class="text-xs text-gray-600"
+										>
+											{{
+												selectedRequest.customerPhone ||
+													selectedRequest.customer_phone
+											}}
+										</p>
 									</div>
 									<div>
 										<p class="text-xs text-gray-500 mb-0.5">
@@ -883,14 +885,88 @@
 									</div>
 									<div>
 										<p class="text-xs text-gray-500 mb-0.5">
-											Request ID
+											Reference (UUID)
 										</p>
 										<p
-											class="text-sm font-mono text-gray-700"
+											class="text-sm font-mono text-gray-700 break-all"
 										>
-											#{{ selectedRequest.id }}
+											{{ selectedRequest.uuid || "—" }}
 										</p>
 									</div>
+								</div>
+								<div
+									v-if="
+										selectedRequest.location?.address ||
+										selectedRequest.location?.nickname
+									"
+									class="pt-2 border-t border-gray-200"
+								>
+									<p class="text-xs text-gray-500 mb-0.5">
+										Service location (customer NFC)
+									</p>
+									<p class="text-sm text-gray-800">
+										<span
+											v-if="selectedRequest.location?.nickname"
+											class="font-medium"
+											>{{ selectedRequest.location.nickname }}</span
+										>
+										<span
+											v-if="selectedRequest.location?.address"
+											:class="
+												selectedRequest.location?.nickname
+													? ' text-gray-600'
+													: ''
+											"
+										>
+											{{
+												selectedRequest.location.nickname
+													? ` · ${selectedRequest.location.address}`
+													: selectedRequest.location.address
+											}}
+										</span>
+									</p>
+									<p
+										v-if="selectedRequest.location?.code"
+										class="text-xs text-gray-500 mt-1 font-mono"
+									>
+										Code: {{ selectedRequest.location.code }}
+									</p>
+								</div>
+								<div
+									v-if="
+										requestAssignmentsList(selectedRequest)
+											.length
+									"
+									class="pt-2 border-t border-gray-200"
+								>
+									<p class="text-xs text-gray-500 mb-0.5">
+										Assigned
+										{{
+											requestAssignmentsList(
+												selectedRequest,
+											).length > 1
+												? "employees"
+												: "employee"
+										}}
+									</p>
+									<ul class="text-sm text-gray-900 space-y-1">
+										<li
+											v-for="(a, idx) in requestAssignmentsList(
+												selectedRequest,
+											)"
+											:key="a.uuid || a.employeeUuid || idx"
+										>
+											<span class="font-medium">{{
+												a.employeeName || "—"
+											}}</span>
+											<span
+												v-if="a.status"
+												class="text-xs font-normal text-gray-500 ml-1"
+											>
+												({{ formatStatus(a.status) }})
+											</span>
+										</li>
+									</ul>
 								</div>
 								<div
 									v-if="
@@ -928,7 +1004,7 @@
 							<div class="space-y-2">
 								<div
 									v-for="quote in selectedRequest.quotes"
-									:key="quote.id"
+									:key="quote.uuid || quote.id"
 									class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start justify-between gap-4"
 								>
 									<div>
@@ -974,11 +1050,50 @@
 							</div>
 						</div>
 
-						<!-- Send Quote (only when pending) -->
+						<!-- Company activity (status changes + notes) -->
+						<div
+							v-if="
+								selectedRequest.companyActivityLog &&
+								selectedRequest.companyActivityLog.length
+							"
+						>
+							<h3
+								class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3"
+							>
+								Company activity
+							</h3>
+							<ul class="space-y-2 max-h-48 overflow-y-auto pr-1">
+								<li
+									v-for="(entry, idx) in [
+										...selectedRequest.companyActivityLog,
+									].reverse()"
+									:key="`${entry.at || 'e'}-${idx}`"
+									class="text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"
+								>
+									<div class="text-slate-500 mb-0.5">
+										{{ formatDateTime(entry.at) }}
+										<span v-if="entry.fromStatus || entry.toStatus">
+											·
+											{{ formatStatus(entry.fromStatus) }} →
+											{{ formatStatus(entry.toStatus) }}
+										</span>
+									</div>
+									<p
+										v-if="entry.message"
+										class="text-slate-800 whitespace-pre-wrap"
+									>
+										{{ entry.message }}
+									</p>
+								</li>
+							</ul>
+						</div>
+
+						<!-- Send Quote: only quote-priced services while pending -->
 						<div
 							v-if="
 								selectedRequest.status === 'pending' &&
-								canManageServices
+								canManageServices &&
+								isQuotePricingRequest(selectedRequest)
 							"
 						>
 							<h3
@@ -1160,7 +1275,7 @@
 								Update Status
 							</h3>
 							<div
-								class="bg-white border border-gray-200 rounded-xl p-4"
+								class="bg-white border border-gray-200 rounded-xl p-4 space-y-3"
 							>
 								<div class="flex flex-col sm:flex-row gap-3">
 									<select
@@ -1192,7 +1307,7 @@
 											!newStatus ||
 											newStatus === selectedRequest.status
 										"
-										class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+										class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shrink-0"
 									>
 										<svg
 											v-if="updatingStatus"
@@ -1235,46 +1350,74 @@
 										}}
 									</button>
 								</div>
+								<div>
+									<label
+										class="block text-sm font-medium text-gray-700 mb-1"
+									>
+										Comment (optional)
+									</label>
+									<p class="text-xs text-gray-500 mb-2">
+										Explain cancellations, note that a quote was sent, or
+										any context for your team and the customer record.
+									</p>
+									<textarea
+										v-model="statusChangeComment"
+										rows="3"
+										placeholder="e.g. Customer asked to cancel — scheduling conflict."
+										class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0D65AE] focus:border-transparent text-sm resize-y min-h-[72px]"
+									/>
+								</div>
 								<p
 									v-if="newStatus === selectedRequest.status"
-									class="mt-2 text-xs text-gray-400"
+									class="text-xs text-gray-400"
 								>
 									This is already the current status.
 								</p>
 							</div>
 						</div>
 
-						<!-- Assign Employee (admins only) -->
+						<!-- Assign employees (admins only) -->
 						<div v-if="canManageMembers && members.length">
 							<h3
 								class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3"
 							>
-								Assign Employee
+								Assign employees
 							</h3>
 							<div
 								class="bg-white border border-gray-200 rounded-xl p-4"
 							>
-								<div class="flex flex-col sm:flex-row gap-3">
-									<select
-										v-model="selectedEmployee"
-										class="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0D65AE] focus:border-transparent text-sm transition-all"
+								<p
+									v-if="!membersAvailableToAssign.length"
+									class="text-sm text-gray-500 mb-3"
+								>
+									All company members are already assigned to
+									this request.
+								</p>
+								<div
+									v-else
+									class="max-h-48 overflow-y-auto border border-gray-100 rounded-lg divide-y divide-gray-100 mb-3"
+								>
+									<label
+										v-for="member in membersAvailableToAssign"
+										:key="
+											(member.user_id ??
+												member.userId ??
+												member.user_uuid) ||
+											member.uuid
+										"
+										class="flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 cursor-pointer text-sm"
 									>
-										<option :value="null" disabled>
-											Select an employee…
-										</option>
-										<option
-											v-for="member in members"
-											:key="
-												member.user_uuid ||
-												member.uuid ||
-												member.id
+										<input
+											type="checkbox"
+											class="rounded border-gray-300 text-green-600 focus:ring-green-500"
+											:checked="
+												isAssignMemberSelected(member)
 											"
-											:value="
-												member.user_uuid ||
-												member.uuid ||
-												member.id
+											@change="
+												toggleAssignMember(member)
 											"
-										>
+										/>
+										<span class="text-gray-800">
 											{{
 												member.user_name ||
 												member.name ||
@@ -1288,19 +1431,23 @@
 													member.role
 												"
 											>
-												—
-												{{
-													member.role_in_company ||
-													member.role
-												}}</template
-											>
-										</option>
-									</select>
+												<span class="text-gray-500">
+													—
+													{{
+														member.role_in_company ||
+														member.role
+													}}</span
+												>
+											</template>
+										</span>
+									</label>
+								</div>
+								<div class="flex flex-col sm:flex-row gap-3">
 									<button
 										@click="submitAssignEmployee"
 										:disabled="
 											assigningEmployee ||
-											!selectedEmployee
+											!selectedAssigneeIds.length
 										"
 										class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
 									>
@@ -1346,36 +1493,40 @@
 									</button>
 								</div>
 
-								<!-- Currently Assigned -->
+								<!-- Currently assigned (summary) -->
 								<div
 									v-if="
-										selectedRequest.assignedEmployee ||
-										selectedRequest.employee
+										requestAssignmentsList(selectedRequest)
+											.length
 									"
-									class="mt-3 flex items-center gap-2 text-sm text-gray-600"
+									class="mt-3 text-sm text-gray-600"
 								>
-									<svg
-										class="w-4 h-4 text-green-500 flex-shrink-0"
-										fill="currentColor"
-										viewBox="0 0 20 20"
-									>
-										<path
-											fill-rule="evenodd"
-											d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-											clip-rule="evenodd"
-										/>
-									</svg>
-									<span>
-										Currently assigned to
-										<strong class="text-gray-900">
-											{{
-												(
-													selectedRequest.assignedEmployee ||
-													selectedRequest.employee
-												)?.name || "an employee"
-											}}
-										</strong>
-									</span>
+									<div class="flex items-start gap-2">
+										<svg
+											class="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5"
+											fill="currentColor"
+											viewBox="0 0 20 20"
+										>
+											<path
+												fill-rule="evenodd"
+												d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+												clip-rule="evenodd"
+											/>
+										</svg>
+										<div>
+											<p class="font-medium text-gray-700">
+												Currently assigned
+											</p>
+											<p class="text-gray-800 mt-0.5">
+												{{
+													formatAssigneesLine(
+														selectedRequest,
+														false,
+													)
+												}}
+											</p>
+										</div>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -1425,6 +1576,7 @@ import {
 	createMyCompanyQuote,
 	updateMyCompanyServiceRequestStatus,
 } from "@/api/companies.api";
+import { isQuotePricingRequest } from "@/utils/serviceRequestDisplay";
 
 // ─── Composables ──────────────────────────────────────────────────────────────
 const router = useRouter();
@@ -1453,7 +1605,7 @@ const sortBy = ref("newest");
 
 // Pagination
 const currentPage = ref(1);
-const rowsPerPage = ref(6);
+const rowsPerPage = ref(10);
 
 // Modal
 const showModal = ref(false);
@@ -1465,11 +1617,83 @@ const submittingQuote = ref(false);
 
 // Status update
 const newStatus = ref("");
+const statusChangeComment = ref("");
 const updatingStatus = ref(false);
 
-// Employee assignment
-const selectedEmployee = ref(null);
+// Employee assignment (multi-select; ids match memberOptionValue)
+const selectedAssigneeIds = ref([]);
 const assigningEmployee = ref(false);
+
+function requestAssignmentsList(req) {
+	if (!req) return [];
+	const arr = Array.isArray(req.assignments) ? req.assignments : [];
+	if (arr.length) return arr;
+	return req.assignment ? [req.assignment] : [];
+}
+
+function formatAssigneesLine(req, truncate = true) {
+	const names = requestAssignmentsList(req)
+		.map((a) => a.employeeName)
+		.filter(Boolean);
+	if (!names.length) return "—";
+	if (!truncate || names.length <= 2) return names.join(", ");
+	return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
+}
+
+function normalizeAssignRow(c) {
+	if (!c) return null;
+	return {
+		uuid: c.uuid,
+		employeeUuid: c.employeeUuid,
+		employeeName: c.employeeName,
+		status: c.status || "assigned",
+		assignedAt: c.assignedAt ?? c.assigned_at,
+	};
+}
+
+function mergeAssignmentsFromResponse(prev, createdList) {
+	const out = prev.map((a) => ({ ...a }));
+	const empKeys = new Set(
+		out
+			.map((a) => (a.employeeUuid || "").toString().toLowerCase())
+			.filter(Boolean),
+	);
+	for (const raw of createdList) {
+		const c = normalizeAssignRow(raw);
+		if (!c) continue;
+		const eu = (c.employeeUuid || "").toString().toLowerCase();
+		if (eu && empKeys.has(eu)) {
+			const idx = out.findIndex(
+				(x) =>
+					(x.employeeUuid || "").toString().toLowerCase() === eu,
+			);
+			if (idx !== -1) out[idx] = { ...out[idx], ...c };
+			continue;
+		}
+		out.push(c);
+		if (eu) empKeys.add(eu);
+	}
+	out.sort(
+		(a, b) =>
+			new Date(b.assignedAt || 0) - new Date(a.assignedAt || 0),
+	);
+	return out;
+}
+
+const membersAvailableToAssign = computed(() => {
+	const req = selectedRequest.value;
+	if (!req) return [];
+	const assigned = new Set(
+		requestAssignmentsList(req)
+			.map((a) => (a.employeeUuid || "").toString().toLowerCase())
+			.filter(Boolean),
+	);
+	return members.value.filter((m) => {
+		const uid = (m.user_uuid || m.uuid || "").toString().toLowerCase();
+		if (uid && assigned.has(uid)) return false;
+		return true;
+	});
+});
 
 // ─── Static options ───────────────────────────────────────────────────────────
 const statusOptions = [
@@ -1518,8 +1742,16 @@ const filteredRequests = computed(() => {
 				""
 			).toLowerCase();
 			const notes = (r.notes || r.description || "").toLowerCase();
+			const email = (
+				r.customerEmail ||
+				r.customer_email ||
+				""
+			).toLowerCase();
 			return (
-				customer.includes(q) || service.includes(q) || notes.includes(q)
+				customer.includes(q) ||
+				service.includes(q) ||
+				notes.includes(q) ||
+				email.includes(q)
 			);
 		});
 	}
@@ -1602,13 +1834,22 @@ const loadMembers = async () => {
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
 const openModal = (request) => {
-	selectedRequest.value = request;
+	const list = requestAssignmentsList(request);
+	selectedRequest.value = {
+		...request,
+		assignments: [...list],
+		assignment: list[0] || null,
+		companyActivityLog: Array.isArray(request.companyActivityLog)
+			? request.companyActivityLog
+			: [],
+	};
 	showModal.value = true;
 	// Pre-fill status selector
 	newStatus.value = request.status || "";
+	statusChangeComment.value = "";
 	// Reset forms
 	quoteForm.value = { totalPrice: "", details: "" };
-	selectedEmployee.value = null;
+	selectedAssigneeIds.value = [];
 };
 
 const closeModal = () => {
@@ -1617,8 +1858,9 @@ const closeModal = () => {
 	setTimeout(() => {
 		selectedRequest.value = null;
 		newStatus.value = "";
+		statusChangeComment.value = "";
 		quoteForm.value = { totalPrice: "", details: "" };
-		selectedEmployee.value = null;
+		selectedAssigneeIds.value = [];
 	}, 200);
 };
 
@@ -1650,6 +1892,12 @@ async function runQuoteAiEsp() {
 
 const submitQuote = async () => {
 	if (!selectedRequest.value || !quoteForm.value.totalPrice) return;
+	if (!isQuotePricingRequest(selectedRequest.value)) {
+		showError(
+			"This service has a fixed price; quotes are not used for it.",
+		);
+		return;
+	}
 
 	submittingQuote.value = true;
 	try {
@@ -1700,14 +1948,18 @@ const submitStatusUpdate = async () => {
 		const res = await updateMyCompanyServiceRequestStatus(
 			requestId,
 			newStatus.value,
+			statusChangeComment.value,
 		);
 
 		showSuccess(`Status updated to "${formatStatus(newStatus.value)}"`);
 
-		const returned = res?.data || res;
+		const payload = res?.data ?? res;
 		const updated = {
 			...selectedRequest.value,
-			status: returned?.status || newStatus.value,
+			status: payload?.status || newStatus.value,
+			companyActivityLog: Array.isArray(payload?.companyActivityLog)
+				? payload.companyActivityLog
+				: selectedRequest.value.companyActivityLog || [],
 		};
 
 		const idx = requests.value.findIndex(
@@ -1715,6 +1967,8 @@ const submitStatusUpdate = async () => {
 		);
 		if (idx !== -1) requests.value[idx] = updated;
 		selectedRequest.value = updated;
+		statusChangeComment.value = "";
+		newStatus.value = updated.status || "";
 	} catch (err) {
 		showError(err.message || "Failed to update status.");
 	} finally {
@@ -1722,28 +1976,57 @@ const submitStatusUpdate = async () => {
 	}
 };
 
+const memberOptionValue = (member) =>
+	member.user_id ??
+	member.userId ??
+	member.user_uuid ??
+	member.uuid ??
+	null;
+
+function toggleAssignMember(member) {
+	const v = memberOptionValue(member);
+	if (v == null) return;
+	const cur = selectedAssigneeIds.value;
+	const i = cur.indexOf(v);
+	if (i === -1) selectedAssigneeIds.value = [...cur, v];
+	else selectedAssigneeIds.value = cur.filter((x) => x !== v);
+}
+
+function isAssignMemberSelected(member) {
+	const v = memberOptionValue(member);
+	if (v == null) return false;
+	return selectedAssigneeIds.value.includes(v);
+}
+
 const submitAssignEmployee = async () => {
-	if (!selectedRequest.value || !selectedEmployee.value) return;
+	const ids = selectedAssigneeIds.value;
+	if (!selectedRequest.value || !ids.length) return;
 
 	assigningEmployee.value = true;
 	try {
 		const requestId =
 			selectedRequest.value.uuid || selectedRequest.value.id;
-		const res = await assignEmployeeMyCompany(
-			requestId,
-			selectedEmployee.value,
+		const payload = ids.length === 1 ? ids[0] : [...ids];
+		const res = await assignEmployeeMyCompany(requestId, payload);
+
+		showSuccess(
+			ids.length > 1
+				? "Employees assigned successfully."
+				: "Employee assigned successfully.",
 		);
 
-		showSuccess("Employee assigned successfully!");
-
-		const returned = res?.data || res;
-		const assignedMember = members.value.find(
-			(m) => (m.user_uuid || m.uuid || m.id) === selectedEmployee.value,
-		);
+		const returned = res?.data ?? res;
+		const createdList = Array.isArray(returned)
+			? returned
+			: returned
+				? [returned]
+				: [];
+		const prev = requestAssignmentsList(selectedRequest.value);
+		const merged = mergeAssignmentsFromResponse(prev, createdList);
 		const updated = {
 			...selectedRequest.value,
-			assignedEmployee: returned?.employee ||
-				assignedMember || { id: selectedEmployee.value },
+			assignments: merged,
+			assignment: merged[0] || null,
 		};
 
 		const idx = requests.value.findIndex(
@@ -1751,7 +2034,7 @@ const submitAssignEmployee = async () => {
 		);
 		if (idx !== -1) requests.value[idx] = updated;
 		selectedRequest.value = updated;
-		selectedEmployee.value = null;
+		selectedAssigneeIds.value = [];
 	} catch (err) {
 		showError(err.message || "Failed to assign employee.");
 	} finally {
@@ -1788,6 +2071,17 @@ const formatDate = (dateStr) => {
 		month: "short",
 		day: "numeric",
 		year: "numeric",
+	});
+};
+
+const formatDateTime = (dateStr) => {
+	if (!dateStr) return "";
+	return new Date(dateStr).toLocaleString("en-US", {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
 	});
 };
 

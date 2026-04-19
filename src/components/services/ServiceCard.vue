@@ -159,9 +159,26 @@ const categoryName = computed(() => {
 	return null;
 });
 
+const isQuote = computed(() => {
+	const m = props.service.pricing_mode || props.service.pricingMode;
+	return m === 'quote';
+});
+
 const formattedPrice = computed(() => {
-	if (props.service.price == null) return 'N/A';
-	return formatCurrency(props.service.price);
+	const list =
+		props.service.price ??
+		props.service.basePrice ??
+		props.service.base_price;
+	if (isQuote.value) {
+		if (list == null || list === '') {
+			return 'Quote on request';
+		}
+		return `${formatCurrency(list)} (guide)`;
+	}
+	if (list == null || list === '') {
+		return 'N/A';
+	}
+	return formatCurrency(list);
 });
 
 const formattedDuration = computed(() => {

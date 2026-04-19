@@ -547,10 +547,10 @@
 							<h3
 								class="font-semibold text-lg text-gray-900 group-hover:text-[#0D65AE] transition-colors line-clamp-1 mb-1"
 							>
-								{{ request.service?.name || "Service Request" }}
+								{{ requestServiceName(request) }}
 							</h3>
 							<p
-								v-if="request.service?.company"
+								v-if="requestCompanyName(request)"
 								class="text-sm text-gray-600 flex items-center gap-1"
 							>
 								<svg
@@ -566,7 +566,9 @@
 										d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
 									></path>
 								</svg>
-								{{ request.service.company.name }}
+								<span class="truncate">{{
+									requestCompanyName(request)
+								}}</span>
 							</p>
 						</div>
 						<span
@@ -579,18 +581,18 @@
 						</span>
 					</div>
 
-					<!-- Request Description -->
+					<!-- Notes / description -->
 					<p
-						v-if="request.description"
+						v-if="requestNotes(request)"
 						class="text-sm text-gray-600 line-clamp-2 mb-4"
 					>
-						{{ request.description }}
+						{{ requestNotes(request) }}
 					</p>
 
 					<!-- Request Details -->
 					<div class="space-y-2 mb-4">
 						<div
-							v-if="request.location"
+							v-if="formatRequestLocation(request)"
 							class="flex items-center gap-2 text-sm text-gray-600"
 						>
 							<svg
@@ -612,7 +614,35 @@
 									d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
 								></path>
 							</svg>
-							<span class="truncate">{{ request.location }}</span>
+							<span class="truncate">{{
+								formatRequestLocation(request)
+							}}</span>
+						</div>
+						<div
+							v-if="
+								request.preferredDate || request.preferred_date
+							"
+							class="flex items-center gap-2 text-sm text-gray-600"
+						>
+							<svg
+								class="w-4 h-4 text-gray-400 flex-shrink-0"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+								></path>
+							</svg>
+							<span>{{
+								formatDate(
+									request.preferredDate ||
+										request.preferred_date,
+								)
+							}}</span>
 						</div>
 						<div
 							v-if="request.budget"
@@ -747,6 +777,12 @@ import { useRouter } from "vue-router";
 import { useServiceRequests } from "@/composables/useServiceRequests";
 import { usePermissions } from "@/composables/usePermissions";
 import { useToast } from "@/composables/useToast";
+import {
+	requestServiceName,
+	requestCompanyName,
+	requestNotes,
+	formatRequestLocation,
+} from "@/utils/serviceRequestDisplay";
 
 const router = useRouter();
 const { showError } = useToast();
@@ -796,13 +832,18 @@ const filteredRequests = computed(() => {
 	// Filter by search query
 	if (searchQuery.value) {
 		const query = searchQuery.value.toLowerCase();
-		requests = requests.filter(
-			(request) =>
-				request.service?.name?.toLowerCase().includes(query) ||
-				request.location?.toLowerCase().includes(query) ||
-				request.description?.toLowerCase().includes(query) ||
-				request.service?.company?.name?.toLowerCase().includes(query),
-		);
+		requests = requests.filter((request) => {
+			const hay = [
+				requestServiceName(request),
+				requestCompanyName(request),
+				requestNotes(request),
+				formatRequestLocation(request),
+				request.uuid,
+			]
+				.join(" ")
+				.toLowerCase();
+			return hay.includes(query);
+		});
 	}
 
 	// Filter by status

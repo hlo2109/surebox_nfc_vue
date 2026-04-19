@@ -147,12 +147,12 @@ const companyId = computed(() => authStore.companyId.value);
 
 const { canManageLocations, canEditCompany, isSuperAdmin } = usePermissions();
 
-/** API permissions can omit manage_company_locations while the user is still company admin. */
+/** API permissions can omit manage_company_locations while the user can manage the workspace. */
 const canManageCompanyLocations = computed(
 	() =>
 		canManageLocations.value ||
 		canEditCompany.value ||
-		authStore.isCompanyAdmin.value ||
+		authStore.canManageCompanyWorkspace.value ||
 		authStore.isAdmin.value ||
 		isSuperAdmin.value,
 );

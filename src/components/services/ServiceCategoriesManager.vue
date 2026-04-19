@@ -12,7 +12,7 @@
 			</div>
 			<button
 				v-if="canCreate"
-				@click="openCreateDialog"
+				@click="openAdoptDialog"
 				class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#0D65AE] rounded-lg hover:bg-[#0a4f87] focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 transition-all"
 			>
 				<svg
@@ -28,7 +28,7 @@
 						d="M12 4v16m8-8H4"
 					/>
 				</svg>
-				Add Category
+				Add from catalogue
 			</button>
 		</div>
 
@@ -67,11 +67,11 @@
 				No Categories Yet
 			</h3>
 			<p class="text-gray-600 mb-4">
-				Create your first category to start organizing your services
+				Adopt categories from the platform catalogue to organize your services
 			</p>
 			<button
 				v-if="canCreate"
-				@click="openCreateDialog"
+				@click="openAdoptDialog"
 				class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#0D65AE] rounded-lg hover:bg-[#0a4f87] transition-all"
 			>
 				<svg
@@ -87,7 +87,7 @@
 						d="M12 4v16m8-8H4"
 					/>
 				</svg>
-				Add Category
+				Add from catalogue
 			</button>
 		</div>
 
@@ -235,7 +235,90 @@
 			</div>
 		</div>
 
-		<!-- Create/Edit Dialog -->
+		<!-- Adopt from platform catalogue -->
+		<Dialog
+			v-model:visible="showAdoptDialog"
+			:modal="true"
+			:draggable="false"
+			:style="{ width: '90vw', maxWidth: '560px' }"
+			:pt="{
+				root: { class: 'rounded-xl shadow-2xl' },
+				header: { class: 'border-b border-gray-200 px-6 py-4' },
+				content: { class: 'px-6 py-5' },
+			}"
+		>
+			<template #header>
+				<div>
+					<h3 class="text-lg font-semibold text-gray-900">
+						Add from catalogue
+					</h3>
+					<p class="text-sm text-gray-500 mt-1">
+						Select subcategories your company offers. You can link them to
+						services afterwards.
+					</p>
+				</div>
+			</template>
+			<div class="max-h-[55vh] overflow-y-auto">
+				<div
+					v-if="loadingMasterTree"
+					class="flex justify-center py-10 text-gray-600 text-sm"
+				>
+					Loading catalogue…
+				</div>
+				<div v-else-if="!masterTree.length" class="text-sm text-gray-600 py-4">
+					No master categories are configured yet. Run the API migration and
+					<code class="text-xs bg-gray-100 px-1 rounded"
+						>npm run seed:service-category-master</code
+					>
+					in the API project.
+				</div>
+				<div v-else class="space-y-5">
+					<div
+						v-for="parent in masterTree"
+						:key="parent.uuid"
+						class="border border-gray-200 rounded-lg p-3"
+					>
+						<p class="text-sm font-semibold text-gray-900 mb-2">
+							{{ parent.name }}
+						</p>
+						<div class="space-y-2 pl-1">
+							<label
+								v-for="sub in parent.subcategories || []"
+								:key="sub.uuid"
+								class="flex items-start gap-2 text-sm text-gray-700 cursor-pointer"
+							>
+								<input
+									type="checkbox"
+									class="mt-0.5 rounded border-gray-300"
+									:value="sub.uuid"
+									v-model="selectedMasterUuids"
+								/>
+								<span>{{ sub.name }}</span>
+							</label>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="flex justify-end gap-2 pt-4 border-t border-gray-100 mt-2">
+				<button
+					type="button"
+					@click="closeAdoptDialog"
+					class="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+				>
+					Cancel
+				</button>
+				<button
+					type="button"
+					:disabled="saving || !selectedMasterUuids.length"
+					@click="submitAdopt"
+					class="px-4 py-2 text-sm font-medium text-white bg-[#0D65AE] rounded-lg hover:bg-[#0a4f87] disabled:opacity-50"
+				>
+					{{ saving ? "Saving…" : "Add selected" }}
+				</button>
+			</div>
+		</Dialog>
+
+		<!-- Edit category -->
 		<Dialog
 			v-model:visible="showDialog"
 			:modal="true"
@@ -248,9 +331,7 @@
 			}"
 		>
 			<template #header>
-				<h3 class="text-lg font-semibold text-gray-900">
-					{{ editingCategory ? "Edit Category" : "Add Category" }}
-				</h3>
+				<h3 class="text-lg font-semibold text-gray-900">Edit Category</h3>
 			</template>
 
 			<form @submit.prevent="submitCategory" class="space-y-4 py-2">
@@ -347,13 +428,7 @@
 								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
 							></path>
 						</svg>
-						{{
-							saving
-								? "Saving..."
-								: editingCategory
-									? "Update Category"
-									: "Add Category"
-						}}
+						{{ saving ? "Saving..." : "Update Category" }}
 					</button>
 				</div>
 			</form>
@@ -458,6 +533,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import Dialog from "primevue/dialog";
 import { useServices } from "@/composables/useServices";
+import { getServiceCategories } from "@/api/services.api";
 
 const props = defineProps({
 	companyId: {
@@ -501,6 +577,10 @@ const {
 
 // State
 const showDialog = ref(false);
+const showAdoptDialog = ref(false);
+const masterTree = ref([]);
+const selectedMasterUuids = ref([]);
+const loadingMasterTree = ref(false);
 const showDeleteDialog = ref(false);
 const editingCategory = ref(null);
 const categoryToDelete = ref(null);
@@ -517,15 +597,44 @@ const categoryForm = ref({
 const errors = ref({});
 
 // Methods
-const openCreateDialog = () => {
-	editingCategory.value = null;
-	categoryForm.value = {
-		name: "",
-		description: "",
-		icon: "",
-	};
-	errors.value = {};
-	showDialog.value = true;
+const openAdoptDialog = async () => {
+	selectedMasterUuids.value = [];
+	masterTree.value = [];
+	showAdoptDialog.value = true;
+	loadingMasterTree.value = true;
+	try {
+		const res = await getServiceCategories({ scope: "master-tree" });
+		const body = res?.data !== undefined ? res.data : res;
+		masterTree.value = Array.isArray(body) ? body : [];
+	} catch (e) {
+		console.error(e);
+		masterTree.value = [];
+	} finally {
+		loadingMasterTree.value = false;
+	}
+};
+
+const closeAdoptDialog = () => {
+	showAdoptDialog.value = false;
+	selectedMasterUuids.value = [];
+};
+
+const submitAdopt = async () => {
+	if (!selectedMasterUuids.value.length) return;
+	saving.value = true;
+	try {
+		const result = await createMyCompanyCategory({
+			masterCategoryUuids: [...selectedMasterUuids.value],
+		});
+		if (result.success) {
+			closeAdoptDialog();
+			emit("refresh");
+		}
+	} catch (error) {
+		console.error("Error adopting categories:", error);
+	} finally {
+		saving.value = false;
+	}
 };
 
 const openEditDialog = (category) => {
@@ -562,6 +671,7 @@ const validateForm = () => {
 };
 
 const submitCategory = async () => {
+	if (!editingCategory.value) return;
 	if (!validateForm()) {
 		return;
 	}
@@ -575,23 +685,12 @@ const submitCategory = async () => {
 			icon: categoryForm.value.icon.trim() || undefined,
 		};
 
-		let result;
-		if (editingCategory.value) {
-			result = await updateMyCompanyCategory(
-				editingCategory.value.uuid,
-				categoryData,
-			);
-			if (result.success) {
-				emit("category-updated", result.data);
-			}
-		} else {
-			result = await createMyCompanyCategory(categoryData);
-			if (result.success) {
-				emit("category-created", result.data);
-			}
-		}
-
+		const result = await updateMyCompanyCategory(
+			editingCategory.value.uuid,
+			categoryData,
+		);
 		if (result.success) {
+			emit("category-updated", result.data);
 			closeDialog();
 			emit("refresh");
 		}
@@ -624,7 +723,10 @@ const handleDelete = async () => {
 		);
 
 		if (result.success) {
-			emit("category-deleted", categoryToDelete.value.id);
+			emit(
+				"category-deleted",
+				categoryToDelete.value.uuid || categoryToDelete.value.id,
+			);
 			closeDeleteDialog();
 			emit("refresh");
 		}

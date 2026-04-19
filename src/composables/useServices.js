@@ -121,10 +121,15 @@ export const useServices = () => {
 			const response = await servicesApi.createCompanyCategory(companyId, categoryData);
 
 			if (response.success !== false) {
-				const newCategory = response.data || response;
-				servicesStore.addCategory(newCategory);
-				toast.showSuccess('Category created successfully!');
-				return { success: true, data: newCategory };
+				const raw = response.data || response;
+				const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+				list.forEach((c) => servicesStore.addCategory(c));
+				toast.showSuccess(
+					list.length === 1
+						? 'Category added to your company.'
+						: `${list.length} categories added to your company.`,
+				);
+				return { success: true, data: list };
 			} else {
 				throw new Error(response.message || 'Failed to create category');
 			}
@@ -586,9 +591,9 @@ export const useServices = () => {
 	};
 
 	/**
-	 * Create a service category for the authenticated user's company
-	 * @param {object} categoryData
-	 * @returns {Promise<object>} Result with created category
+	 * Adopt platform master categories (subcategory UUIDs) into the user's company.
+	 * @param {{ masterCategoryUuids: string[] }} body
+	 * @returns {Promise<object>} Result with adopted categories array
 	 */
 	const createMyCompanyCategory = async (categoryData) => {
 		try {
@@ -598,10 +603,15 @@ export const useServices = () => {
 			const response = await servicesApi.createMyCompanyCategory(categoryData);
 
 			if (response.success !== false) {
-				const newCategory = response.data || response;
-				servicesStore.addCategory(newCategory);
-				toast.showSuccess('Category created successfully!');
-				return { success: true, data: newCategory };
+				const raw = response.data || response;
+				const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+				list.forEach((c) => servicesStore.addCategory(c));
+				toast.showSuccess(
+					list.length === 1
+						? 'Category added to your company.'
+						: `${list.length} categories added to your company.`,
+				);
+				return { success: true, data: list };
 			} else {
 				throw new Error(response.message || 'Failed to create category');
 			}

@@ -59,24 +59,24 @@
 
 					<!-- Links -->
 					<div class="flex items-center gap-8 text-sm">
-						<a
-							href="#"
+						<router-link
+							to="/privacy"
 							class="text-gray-600 hover:text-gray-900 transition-colors"
 						>
-							Privacy
-						</a>
-						<a
-							href="#"
+							Privacidad
+						</router-link>
+						<router-link
+							to="/terms"
 							class="text-gray-600 hover:text-gray-900 transition-colors"
 						>
-							Terms
-						</a>
-						<a
-							href="#"
+							Términos
+						</router-link>
+						<router-link
+							to="/help"
 							class="text-gray-600 hover:text-gray-900 transition-colors"
 						>
-							Help
-						</a>
+							Ayuda
+						</router-link>
 					</div>
 				</div>
 			</div>

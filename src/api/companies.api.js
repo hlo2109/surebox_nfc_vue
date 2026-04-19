@@ -301,11 +301,10 @@ export const getCompanyCategory = async (companyId, categoryId) => {
 };
 
 /**
- * Create a service category for a company
+ * Adopt platform master categories into a company (admin)
  * @param {string} companyId - Company UUID
  * @param {object} categoryData
- * @param {string}  categoryData.name        - Required
- * @param {string}  [categoryData.description]
+ * @param {string[]} categoryData.masterCategoryUuids - Subcategory UUIDs from catalogue
  * @returns {Promise<object>}
  */
 export const createCompanyCategory = async (companyId, categoryData) => {
@@ -614,6 +613,20 @@ export const cancelMyCompanyInvitation = async (invitationId) => {
 	}
 };
 
+/**
+ * Re-send the invitation email (same link) and extend expiry by 7 days.
+ * @param {number} invitationId - Invitation ID
+ * @returns {Promise<object>}
+ */
+export const resendMyCompanyInvitation = async (invitationId) => {
+	try {
+		const response = await apiClient.post(`/my/company/invitations/${invitationId}/resend`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
 // ─────────────────────────────────────────────
 // MY COMPANY – Locations
 // ─────────────────────────────────────────────
@@ -715,11 +728,10 @@ export const getMyCompanyCategory = async (categoryId) => {
 };
 
 /**
- * Create a service category for the authenticated user's company
+ * Adopt platform master categories into the authenticated user's company
  * Requires `manage_services` permission.
  * @param {object} categoryData
- * @param {string}  categoryData.name - Required
- * @param {string}  [categoryData.description]
+ * @param {string[]} categoryData.masterCategoryUuids - Subcategory UUIDs from catalogue
  * @returns {Promise<object>}
  */
 export const createMyCompanyCategory = async (categoryData) => {
@@ -864,11 +876,19 @@ export const getMyCompanyServiceRequests = async (params = {}) => {
  * Requires company admin role.
  * @param {string} requestId - Service request UUID
  * @param {string} status - 'pending' | 'accepted' | 'rejected' | 'in_progress' | 'completed'
+ * @param {string} [statusComment] - Optional note (cancellation reason, quote sent, etc.)
  * @returns {Promise<object>}
  */
-export const updateMyCompanyServiceRequestStatus = async (requestId, status) => {
+export const updateMyCompanyServiceRequestStatus = async (requestId, status, statusComment) => {
 	try {
-		const response = await apiClient.put(`/my/company/service-requests/${requestId}/status`, { status });
+		const body = { status };
+		if (statusComment != null && String(statusComment).trim() !== "") {
+			body.statusComment = String(statusComment).trim();
+		}
+		const response = await apiClient.put(
+			`/my/company/service-requests/${requestId}/status`,
+			body,
+		);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -876,17 +896,20 @@ export const updateMyCompanyServiceRequestStatus = async (requestId, status) => 
 };
 
 /**
- * Assign an employee to a service request (my company)
+ * Assign one or more employees to a service request (my company)
  * Requires `manage_company_services` permission.
- * @param {string} requestId  - Service request UUID
- * @param {number} employeeId - Employee user ID
+ * @param {string} requestId - Service request UUID
+ * @param {number|string|Array<number|string>} employeeIdOrIds - User id(s) or UUID(s); array assigns several at once
  * @returns {Promise<object>}
  */
-export const assignEmployeeMyCompany = async (requestId, employeeId) => {
+export const assignEmployeeMyCompany = async (requestId, employeeIdOrIds) => {
 	try {
+		const employeeId = Array.isArray(employeeIdOrIds)
+			? employeeIdOrIds
+			: employeeIdOrIds;
 		const response = await apiClient.post(
 			`/my/company/service-requests/${requestId}/assign`,
-			{ employeeId }
+			{ employeeId },
 		);
 		return response.data;
 	} catch (error) {
@@ -987,6 +1010,7 @@ export default {
 	// My Company – Invitations
 	getMyCompanyInvitations,
 	cancelMyCompanyInvitation,
+	resendMyCompanyInvitation,
 
 	// My Company – Locations
 	getMyCompanyLocations,

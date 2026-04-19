@@ -321,7 +321,6 @@
 						:options="roles"
 						optionLabel="name"
 						placeholder="Select a role"
-						:loading="loadingRoles"
 						class="w-full"
 					>
 						<template #option="slotProps">
@@ -465,7 +464,6 @@
 						:options="roles"
 						optionLabel="name"
 						placeholder="Select a role"
-						:loading="loadingRoles"
 						class="w-full"
 					>
 						<template #option="slotProps">
@@ -681,8 +679,6 @@ import Select from "primevue/select";
 import { useCompanies, useToast } from "@/composables";
 import { formatDate } from "@/utils/formatters";
 
-import * as rolesApi from "@/api/roles.api";
-
 const { addMyCompanyMember, updateMyCompanyMember, removeMyCompanyMember } =
 	useCompanies();
 const { showToast } = useToast();
@@ -742,9 +738,13 @@ const addForm = ref({
 	role: null,
 });
 
-// Data for dropdowns
-const roles = ref([]);
-const loadingRoles = ref(false);
+/** Values for `company_user.role_in_company` — must match API / DB (admin | employee). */
+const COMPANY_MEMBER_ROLES_IN_COMPANY = [
+	{ name: "admin", description: "Company administrator" },
+	{ name: "employee", description: "Employee" },
+];
+
+const roles = ref([...COMPANY_MEMBER_ROLES_IN_COMPANY]);
 
 const editForm = ref({
 	role: null,
@@ -762,43 +762,19 @@ const totalPages = computed(() => {
 	return Math.ceil(props.totalRecords / props.pageSize);
 });
 
-// Load roles the first time the Add-member dialog is opened.
-watch(showAddDialog, async (isOpen) => {
-	if (isOpen && roles.value.length === 0) {
-		await loadRoles();
+watch(showAddDialog, (isOpen) => {
+	if (isOpen) {
+		const defaultRole =
+			roles.value.find((r) => r.name === "employee") || roles.value[0];
+		if (!addForm.value.role) {
+			addForm.value.role = defaultRole || null;
+		}
+	} else {
+		addForm.value = { userId: null, role: null };
 	}
 });
 
 // Methods
-
-// Default roles used as a fallback when the /admin/roles endpoint is
-// not accessible (e.g. returns 403 for non-super-admin users).
-const DEFAULT_ROLES = [
-	{ id: "owner", name: "owner", description: "Company owner" },
-	{ id: "admin", name: "admin", description: "Company administrator" },
-	{ id: "manager", name: "manager", description: "Company manager" },
-	{ id: "member", name: "member", description: "Team member" },
-	{ id: "employee", name: "employee", description: "Employee" },
-];
-
-const loadRoles = async () => {
-	loadingRoles.value = true;
-	try {
-		const response = await rolesApi.getRoles();
-		const fetched = response.data || response || [];
-		roles.value = fetched.length ? fetched : DEFAULT_ROLES;
-	} catch (error) {
-		// 403 means the endpoint is admin-only; silently use the default list
-		// so the UI still works without a scary error toast.
-		console.warn(
-			"Could not fetch roles from API, using defaults:",
-			error.message,
-		);
-		roles.value = DEFAULT_ROLES;
-	} finally {
-		loadingRoles.value = false;
-	}
-};
 
 const getInitials = (member) => {
 	const name =
@@ -911,13 +887,8 @@ const handleAddMember = async () => {
 	adding.value = false;
 };
 
-const startEditMember = async (member) => {
+const startEditMember = (member) => {
 	memberToEdit.value = member;
-
-	// Ensure roles are available before the dialog opens
-	if (roles.value.length === 0) {
-		await loadRoles();
-	}
 
 	// Find the role object that matches the member's current role
 	const currentRoleName = member.role_in_company || member.role || "";

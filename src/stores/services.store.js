@@ -112,14 +112,21 @@ const addCategory = (category) => {
 };
 
 const updateCategory = (updatedCategory) => {
-	const index = state.categories.findIndex(category => category.id === updatedCategory.id);
+	const index = state.categories.findIndex(
+		(category) =>
+			category.id === updatedCategory.id ||
+			category.uuid === updatedCategory.uuid,
+	);
 	if (index !== -1) {
 		state.categories[index] = updatedCategory;
 	}
 };
 
 const removeCategory = (categoryId) => {
-	state.categories = state.categories.filter(category => category.id !== categoryId);
+	state.categories = state.categories.filter(
+		(category) =>
+			category.id !== categoryId && category.uuid !== categoryId,
+	);
 };
 
 const getCategoryById = (id) => {

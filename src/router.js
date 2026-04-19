@@ -35,7 +35,7 @@ import { useAuthStore } from './stores/auth.store';
 import { PERMISSIONS, hasPermission } from './utils/permissions';
 import {
 	userHasCompanyMembership,
-	isPrimaryCompanyAdmin,
+	canManageCompanyWorkspace,
 	isPrimaryCompanyFieldStaff,
 } from './utils/companyContext';
 import { getAccessToken } from './utils/storage';
@@ -78,6 +78,39 @@ const routes = [
 		],
 	},
 	{
+		path: '/invite/accept',
+		component: () => import('./layouts/AuthLayout.vue'),
+		children: [
+			{
+				path: '',
+				name: 'InviteAccept',
+				component: () => import('./views/InviteAccept.vue'),
+			},
+		],
+	},
+	{
+		path: '/terms',
+		component: () => import('./layouts/PublicDocumentLayout.vue'),
+		children: [
+			{
+				path: '',
+				name: 'TermsOfService',
+				component: () => import('./views/legal/TermsOfService.vue'),
+			},
+		],
+	},
+	{
+		path: '/privacy',
+		component: () => import('./layouts/PublicDocumentLayout.vue'),
+		children: [
+			{
+				path: '',
+				name: 'PrivacyPolicy',
+				component: () => import('./views/legal/PrivacyPolicy.vue'),
+			},
+		],
+	},
+	{
 		path: '/delivery',
 		component: () => import('./layouts/MainLayout.vue'),
 		children: [
@@ -111,7 +144,7 @@ const routes = [
 	{
 		path: '/my-company',
 		component: () => import('./layouts/MainLayout.vue'),
-		meta: { requiresCompany: true },
+		meta: { requiresCompany: true, requiresCompanyAdmin: true },
 		children: [
 			{
 				path: '',
@@ -275,7 +308,6 @@ const routes = [
 	{
 		path: '/requests',
 		component: () => import('./layouts/MainLayout.vue'),
-		meta: { requiresNoCompany: true },
 		children: [
 			{
 				path: '',
@@ -312,7 +344,6 @@ const routes = [
 	{
 		path: '/requests/create',
 		component: () => import('./layouts/MainLayout.vue'),
-		meta: { requiresNoCompany: true },
 		children: [
 			{
 				path: '',
@@ -324,7 +355,6 @@ const routes = [
 	{
 		path: '/requests/:id',
 		component: () => import('./layouts/MainLayout.vue'),
-		meta: { requiresNoCompany: true },
 		children: [
 			{
 				path: '',
@@ -388,7 +418,17 @@ const router = createRouter({
 
 // Route guards — auth, empresa (admin vs empleado de campo), cliente sin empresa, permisos API
 router.beforeEach((to, from, next) => {
-	const publicPages = ['/login', '/register', '/forgot-password', '/reset-password', '/unauthorized', '/help'];
+	const publicPages = [
+		'/login',
+		'/register',
+		'/forgot-password',
+		'/reset-password',
+		'/invite/accept',
+		'/unauthorized',
+		'/help',
+		'/terms',
+		'/privacy',
+	];
 	const authRequired = !publicPages.includes(to.path);
 	const jwt = getAccessToken();
 
@@ -444,11 +484,12 @@ router.beforeEach((to, from, next) => {
 		if (!user) {
 			return next('/login');
 		}
-		if (!isPrimaryCompanyAdmin(user)) {
+		if (!canManageCompanyWorkspace(user)) {
 			return next({
 				path: '/unauthorized',
 				query: {
-					message: 'Only company administrators can access this page.',
+					message:
+						'Only company workspace administrators can access this page.',
 				},
 			});
 		}
@@ -465,12 +506,6 @@ router.beforeEach((to, from, next) => {
 					message: 'This area is only for company field staff (assignments and NFC on site).',
 				},
 			});
-		}
-	}
-
-	if (to.meta.requiresNoCompany) {
-		if (user && userHasCompanyMembership(user)) {
-			return next('/my-company');
 		}
 	}
 

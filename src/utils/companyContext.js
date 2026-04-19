@@ -43,11 +43,29 @@ export function isPrimaryCompanyAdmin(user) {
 }
 
 /**
- * Member of a company who is not the company admin — field staff (assignments, NFC on site).
+ * True if the user may use company backoffice (/my/company, members, services, …).
+ * Matches API `requireCompanyAdmin`: company_user role `admin` or `manager`, or
+ * system role `company_admin` (owner registering with a company).
+ * @param {object|null|undefined} user
+ * @returns {boolean}
+ */
+export function canManageCompanyWorkspace(user) {
+	if (!userHasCompanyMembership(user)) return false;
+	const inCompany = getPrimaryCompanyRole(user);
+	if (inCompany === 'admin' || inCompany === 'manager') return true;
+	const roles = Array.isArray(user?.roles) ? user.roles : [];
+	const names = roles
+		.map((r) => (typeof r === 'string' ? r : r?.name))
+		.filter(Boolean);
+	return names.includes('company_admin');
+}
+
+/**
+ * Company member with role `employee` in the primary company (field / assignments UI).
  * @param {object|null|undefined} user
  * @returns {boolean}
  */
 export function isPrimaryCompanyFieldStaff(user) {
 	if (!userHasCompanyMembership(user)) return false;
-	return !isPrimaryCompanyAdmin(user);
+	return getPrimaryCompanyRole(user) === 'employee';
 }

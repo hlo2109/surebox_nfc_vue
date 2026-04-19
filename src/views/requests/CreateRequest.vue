@@ -165,7 +165,18 @@
 											svc.company?.name
 										}}</span>
 										<span
-											v-if="svc.price"
+											v-if="svc.pricingMode === 'quote'"
+											class="text-xs font-medium text-amber-800"
+										>
+											·
+											{{
+												svc.price
+													? `From ${formatCurrency(svc.price)}`
+													: "Quote on request"
+											}}
+										</span>
+										<span
+											v-else-if="svc.price"
 											class="text-xs font-medium text-[#0D65AE]"
 										>
 											· {{ formatCurrency(svc.price) }}
@@ -226,7 +237,10 @@
 						</div>
 						<div class="flex items-center gap-4 mt-3">
 							<div
-								v-if="selectedService.price"
+								v-if="
+									selectedService.pricingMode === 'quote' ||
+									selectedService.price
+								"
 								class="flex items-center gap-1"
 							>
 								<svg
@@ -243,6 +257,17 @@
 									/>
 								</svg>
 								<span
+									v-if="selectedService.pricingMode === 'quote'"
+									class="text-sm font-semibold text-amber-800"
+								>
+									{{
+										selectedService.price
+											? `From ${formatCurrency(selectedService.price)}`
+											: "Quote on request"
+									}}
+								</span>
+								<span
+									v-else
 									class="text-sm font-semibold text-green-600"
 									>{{
 										formatCurrency(selectedService.price)
@@ -788,7 +813,11 @@ function selectBox(box) {
 function selectService(svc) {
 	formData.value.serviceId = svc.id;
 	formData.value.companyId = svc.companyUuid || svc.company?.uuid || null;
-	if (svc.price) formData.value.budget = svc.price;
+	if (svc.pricingMode === "quote" && !svc.price) {
+		formData.value.budget = "";
+	} else if (svc.price) {
+		formData.value.budget = svc.price;
+	}
 	serviceSearch.value = "";
 	showServiceDropdown.value = false;
 	// Clear any service error
@@ -839,13 +868,24 @@ const loadAllServices = async () => {
  * @param {string|null} companyUuid - UUID of the owning company (from the request context)
  */
 function normalizeService(s, companyUuid = null) {
+	const pricingMode = s.pricing_mode || s.pricingMode || "fixed";
+	const base = s.base_price ?? s.basePrice ?? s.price;
+	const resolvedCompanyUuid =
+		companyUuid ||
+		s.companyUuid ||
+		s.company_uuid ||
+		s.company?.uuid ||
+		null;
 	return {
 		...s,
 		id: s.uuid || s.id,
-		price: s.basePrice ?? s.price,
-		companyUuid: companyUuid || s.companyUuid || null,
+		pricingMode,
+		price: base,
+		photos: Array.isArray(s.photos) ? s.photos : [],
+		promotion: s.promotion || null,
+		companyUuid: resolvedCompanyUuid,
 		company: s.companyName
-			? { name: s.companyName, uuid: companyUuid }
+			? { name: s.companyName, uuid: resolvedCompanyUuid }
 			: s.company || null,
 	};
 }
@@ -878,6 +918,7 @@ onMounted(async () => {
 	loadingServices.value = true;
 	try {
 		const preselectedId = route.query.serviceId;
+		const preselectedCompanyId = route.query.companyId;
 
 		if (preselectedId) {
 			// Fast path: a specific service was linked from the services list.
@@ -888,6 +929,11 @@ onMounted(async () => {
 				const normalized = normalizeService(result.data);
 				availableServices.value = [normalized];
 				formData.value.serviceId = normalized.id;
+				formData.value.companyId =
+					preselectedCompanyId ||
+					normalized.companyUuid ||
+					normalized.company?.uuid ||
+					null;
 			}
 			// Load the full list silently in the background
 			loadAllServices()

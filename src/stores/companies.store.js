@@ -43,12 +43,20 @@ const addCompany = (company) => {
 };
 
 const updateCompany = (updatedCompany) => {
-	const index = state.companies.findIndex(company => company.id === updatedCompany.id);
+	const index = state.companies.findIndex(
+		company =>
+			(updatedCompany.id != null && company.id === updatedCompany.id) ||
+			(updatedCompany.uuid != null && company.uuid === updatedCompany.uuid),
+	);
 	if (index !== -1) {
 		state.companies[index] = updatedCompany;
 	}
-	// Update current company if it's the same one
-	if (state.currentCompany?.id === updatedCompany.id) {
+	const sameCurrent =
+		state.currentCompany &&
+		((updatedCompany.id != null && state.currentCompany.id === updatedCompany.id) ||
+			(updatedCompany.uuid != null &&
+				state.currentCompany.uuid === updatedCompany.uuid));
+	if (sameCurrent) {
 		state.currentCompany = updatedCompany;
 	}
 };

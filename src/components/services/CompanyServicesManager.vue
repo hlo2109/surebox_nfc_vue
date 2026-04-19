@@ -333,6 +333,37 @@
 					</p>
 
 					<!-- Price and Duration -->
+					<div class="flex flex-wrap items-center gap-2 text-sm mb-2">
+						<span
+							v-if="isQuoteMode(service)"
+							class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-900"
+						>
+							Quote on request
+						</span>
+						<span
+							v-else
+							class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700"
+						>
+							Fixed price
+						</span>
+						<p
+							v-if="promoLabel(service)"
+							class="text-xs text-emerald-700 font-medium"
+						>
+							{{ promoLabel(service) }}
+						</p>
+					</div>
+					<div
+						v-if="service.photos && service.photos[0]"
+						class="mb-3 rounded-lg overflow-hidden border border-gray-100 max-h-36"
+					>
+						<img
+							:src="service.photos[0]"
+							:alt="service.name"
+							class="w-full h-32 object-cover"
+							loading="lazy"
+						/>
+					</div>
 					<div class="flex items-center gap-4 text-sm">
 						<div class="flex items-center gap-1.5">
 							<svg
@@ -349,7 +380,7 @@
 								/>
 							</svg>
 							<span class="font-semibold text-gray-900">
-								{{ formatPrice(service.basePrice) }}
+								{{ displayListPrice(service) }}
 							</span>
 						</div>
 						<div
@@ -383,7 +414,7 @@
 			v-model:visible="showDialog"
 			:modal="true"
 			:draggable="false"
-			:style="{ width: '90vw', maxWidth: '640px' }"
+			:style="{ width: '90vw', maxWidth: '720px' }"
 			:pt="{
 				root: { class: 'rounded-xl shadow-2xl' },
 				header: { class: 'border-b border-gray-200 px-6 py-4' },
@@ -468,6 +499,62 @@
 					></textarea>
 				</div>
 
+				<!-- Pricing mode -->
+				<div>
+					<p class="block text-sm font-semibold text-gray-900 mb-2">
+						Pricing
+					</p>
+					<div class="flex flex-col sm:flex-row gap-3">
+						<label
+							class="flex items-start gap-2 cursor-pointer rounded-lg border border-gray-200 px-3 py-2 flex-1"
+							:class="
+								serviceForm.pricingMode === 'fixed'
+									? 'border-[#0D65AE] bg-blue-50/40'
+									: ''
+							"
+						>
+							<input
+								v-model="serviceForm.pricingMode"
+								type="radio"
+								value="fixed"
+								class="mt-1"
+							/>
+							<span>
+								<span class="font-medium text-gray-900"
+									>Fixed price</span
+								>
+								<span class="block text-xs text-gray-500 mt-0.5"
+									>Show customers the full price up front.</span
+								>
+							</span>
+						</label>
+						<label
+							class="flex items-start gap-2 cursor-pointer rounded-lg border border-gray-200 px-3 py-2 flex-1"
+							:class="
+								serviceForm.pricingMode === 'quote'
+									? 'border-[#0D65AE] bg-blue-50/40'
+									: ''
+							"
+						>
+							<input
+								v-model="serviceForm.pricingMode"
+								type="radio"
+								value="quote"
+								class="mt-1"
+							/>
+							<span>
+								<span class="font-medium text-gray-900"
+									>Quote only</span
+								>
+								<span class="block text-xs text-gray-500 mt-0.5"
+									>You send a quote after the customer requests the
+									service.</span
+								>
+							</span>
+						</label>
+					</div>
+				</div>
+
 				<!-- Price and Duration -->
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<div>
@@ -475,15 +562,19 @@
 							for="service-price"
 							class="block text-sm font-semibold text-gray-900 mb-2"
 						>
-							Price ($) *
+							{{
+								serviceForm.pricingMode === "quote"
+									? "Guide price ($) — optional"
+									: "Price ($) *"
+							}}
 						</label>
 						<input
 							id="service-price"
-							v-model.number="serviceForm.price"
+							v-model="serviceForm.price"
 							type="number"
 							step="0.01"
 							min="0"
-							required
+							:required="serviceForm.pricingMode === 'fixed'"
 							class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all"
 							placeholder="0.00"
 						/>
@@ -510,6 +601,156 @@
 							placeholder="e.g., 60"
 						/>
 					</div>
+				</div>
+
+				<!-- Image gallery (upload from computer) -->
+				<div>
+					<p class="block text-sm font-semibold text-gray-900 mb-2">
+						Gallery
+					</p>
+					<p class="text-xs text-gray-500 mb-3">
+						Choose images from your computer (JPEG, PNG, WebP, GIF). Up to
+						24 photos, 10 MB each. They are stored securely and shown to
+						customers on the service page.
+					</p>
+					<input
+						ref="galleryFileInputRef"
+						type="file"
+						accept="image/jpeg,image/png,image/webp,image/gif"
+						multiple
+						class="sr-only"
+						@change="onGalleryFilesSelected"
+					/>
+					<div
+						v-if="galleryItems.length"
+						class="flex flex-wrap gap-2 mb-3"
+					>
+						<div
+							v-for="(item, idx) in galleryItems"
+							:key="item.key"
+							class="relative w-28 h-28 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 group"
+						>
+							<img
+								:src="item.url"
+								alt=""
+								class="w-full h-full object-cover"
+								loading="lazy"
+							/>
+							<button
+								type="button"
+								title="Remove image"
+								class="absolute top-1 right-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white text-lg leading-none opacity-0 group-hover:opacity-100 hover:bg-black/70 transition-opacity"
+								@click="removeGalleryItem(idx)"
+							>
+								×
+							</button>
+						</div>
+					</div>
+					<button
+						type="button"
+						@click="triggerGalleryFilePick"
+						:disabled="galleryUploading || galleryItems.length >= 24"
+						class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-800 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+					>
+						<svg
+							v-if="galleryUploading"
+							class="animate-spin w-4 h-4 text-[#0D65AE]"
+							fill="none"
+							viewBox="0 0 24 24"
+						>
+							<circle
+								class="opacity-25"
+								cx="12"
+								cy="12"
+								r="10"
+								stroke="currentColor"
+								stroke-width="4"
+							/>
+							<path
+								class="opacity-75"
+								fill="currentColor"
+								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+							/>
+						</svg>
+						<svg
+							v-else
+							class="w-4 h-4 text-[#0D65AE]"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+							/>
+						</svg>
+						{{
+							galleryUploading
+								? "Uploading…"
+								: galleryItems.length >= 24
+									? "Maximum 24 images"
+									: "Add images from computer"
+						}}
+					</button>
+				</div>
+
+				<!-- Promotion (before / after) -->
+				<div class="rounded-lg border border-gray-200 p-4 bg-gray-50/80">
+					<label class="flex items-center gap-2 cursor-pointer">
+						<input
+							v-model="serviceForm.promotionEnabled"
+							type="checkbox"
+							class="rounded border-gray-300"
+						/>
+						<span class="text-sm font-semibold text-gray-900"
+							>Show a promotion (before → now)</span
+						>
+					</label>
+					<div
+						v-if="serviceForm.promotionEnabled"
+						class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3"
+					>
+						<div>
+							<label class="block text-xs font-medium text-gray-600 mb-1"
+								>Before ($)</label
+							>
+							<input
+								v-model.number="serviceForm.promotionCompareAt"
+								type="number"
+								step="0.01"
+								min="0"
+								class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+							/>
+						</div>
+						<div>
+							<label class="block text-xs font-medium text-gray-600 mb-1"
+								>Promo price ($)</label
+							>
+							<input
+								v-model.number="serviceForm.promotionPrice"
+								type="number"
+								step="0.01"
+								min="0"
+								class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+							/>
+						</div>
+						<div class="sm:col-span-1">
+							<label class="block text-xs font-medium text-gray-600 mb-1"
+								>Label (optional)</label
+							>
+							<input
+								v-model="serviceForm.promotionLabel"
+								type="text"
+								class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+								placeholder="Spring offer"
+							/>
+						</div>
+					</div>
+					<p v-if="errors.promotion" class="mt-2 text-sm text-red-600">
+						{{ errors.promotion }}
+					</p>
 				</div>
 
 				<!-- Status -->
@@ -706,6 +947,27 @@
 			</template>
 
 			<div v-if="viewingService" class="space-y-6 py-2">
+				<div
+					v-if="viewingService.photos && viewingService.photos.length"
+					class="grid grid-cols-2 sm:grid-cols-3 gap-2"
+				>
+					<a
+						v-for="(url, i) in viewingService.photos"
+						:key="i"
+						:href="url"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="block rounded-lg overflow-hidden border border-gray-100 aspect-video bg-gray-100"
+					>
+						<img
+							:src="url"
+							:alt="`${viewingService.name} ${i + 1}`"
+							class="w-full h-full object-cover hover:opacity-95"
+							loading="lazy"
+						/>
+					</a>
+				</div>
+
 				<!-- Description -->
 				<div v-if="viewingService.description">
 					<h4 class="text-sm font-semibold text-gray-900 mb-2">
@@ -723,7 +985,13 @@
 							Price
 						</h4>
 						<p class="text-2xl font-bold text-[#0D65AE]">
-							{{ formatPrice(viewingService.basePrice) }}
+							{{ displayListPrice(viewingService) }}
+						</p>
+						<p
+							v-if="promoLabel(viewingService)"
+							class="text-sm text-emerald-700 font-medium mt-1"
+						>
+							{{ promoLabel(viewingService) }}
 						</p>
 					</div>
 					<div v-if="viewingService.duration">
@@ -783,6 +1051,8 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import Dialog from "primevue/dialog";
 import { useServices } from "@/composables/useServices";
+import { useToast } from "@/composables/useToast";
+import { uploadImageToCloudinary } from "@/composables/useCloudinaryUpload";
 import {
 	formatCurrency,
 	formatDuration,
@@ -829,8 +1099,12 @@ const emit = defineEmits([
 ]);
 
 const { createMyCompanyService, updateService, deleteService } = useServices();
+const { showError, showSuccess } = useToast();
 
 // State
+const galleryFileInputRef = ref(null);
+const galleryItems = ref([]);
+const galleryUploading = ref(false);
 const showDialog = ref(false);
 const showDeleteDialog = ref(false);
 const showViewDialog = ref(false);
@@ -848,9 +1122,14 @@ const serviceForm = ref({
 	name: "",
 	categoryId: null,
 	description: "",
-	price: null,
+	price: "",
 	duration: null,
 	status: "active",
+	pricingMode: "fixed",
+	promotionEnabled: false,
+	promotionCompareAt: null,
+	promotionPrice: null,
+	promotionLabel: "",
 });
 
 const errors = ref({});
@@ -872,7 +1151,10 @@ const filteredServices = computed(() => {
 	// Filter by category
 	if (selectedCategory.value) {
 		filtered = filtered.filter(
-			(service) => service.categoryId === selectedCategory.value,
+			(service) =>
+				(service.category_uuid ||
+					service.categoryUuid ||
+					service.categoryId) === selectedCategory.value,
 		);
 	}
 
@@ -905,7 +1187,127 @@ const getStatusClass = (status) => {
 };
 
 const formatPrice = (price) => {
+	if (price === null || price === undefined || price === "") {
+		return "—";
+	}
 	return formatCurrency(price);
+};
+
+const isQuoteMode = (service) => {
+	const m = service?.pricing_mode || service?.pricingMode;
+	return m === "quote";
+};
+
+const displayListPrice = (service) => {
+	if (!service) {
+		return "—";
+	}
+	if (isQuoteMode(service)) {
+		const p = service.basePrice ?? service.base_price;
+		if (p === null || p === undefined || p === "") {
+			return "Quote on request";
+		}
+		return `From ${formatPrice(p)} (guide)`;
+	}
+	return formatPrice(service.basePrice ?? service.base_price);
+};
+
+const promoLabel = (service) => {
+	const pr = service?.promotion;
+	if (!pr || !pr.enabled) {
+		return "";
+	}
+	const was = formatPrice(pr.compareAt);
+	const now = formatPrice(pr.price);
+	const lbl = pr.label ? ` — ${pr.label}` : "";
+	return `Was ${was} · Now ${now}${lbl}`;
+};
+
+const newGalleryKey = () =>
+	typeof crypto !== "undefined" && crypto.randomUUID
+		? crypto.randomUUID()
+		: `g-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+const galleryPhotoUrls = () => galleryItems.value.map((x) => x.url);
+
+const triggerGalleryFilePick = () => {
+	galleryFileInputRef.value?.click?.();
+};
+
+const removeGalleryItem = (index) => {
+	galleryItems.value.splice(index, 1);
+};
+
+const onGalleryFilesSelected = async (event) => {
+	const input = event.target;
+	const files = input.files ? Array.from(input.files) : [];
+	input.value = "";
+	if (!files.length) {
+		return;
+	}
+
+	const allowed = new Set([
+		"image/jpeg",
+		"image/png",
+		"image/webp",
+		"image/gif",
+	]);
+	const maxBytes = 10 * 1024 * 1024;
+	const maxTotal = 24;
+	let added = 0;
+
+	galleryUploading.value = true;
+	try {
+		for (const file of files) {
+			if (galleryItems.value.length >= maxTotal) {
+				showError("You can add at most 24 images per service.");
+				break;
+			}
+			if (!allowed.has(file.type)) {
+				showError(`${file.name}: use JPEG, PNG, WebP or GIF.`);
+				continue;
+			}
+			if (file.size > maxBytes) {
+				showError(`${file.name} is larger than 10 MB.`);
+				continue;
+			}
+			try {
+				const url = await uploadImageToCloudinary(file);
+				if (url) {
+					galleryItems.value.push({ url, key: newGalleryKey() });
+					added += 1;
+				} else {
+					showError(`Upload failed for ${file.name}.`);
+				}
+			} catch (err) {
+				showError(
+					err?.message ||
+						`Could not upload ${file.name}. Check your connection and try again.`,
+				);
+			}
+		}
+		if (added) {
+			showSuccess(
+				added === 1
+					? "1 image added to the gallery."
+					: `${added} images added to the gallery.`,
+			);
+		}
+	} finally {
+		galleryUploading.value = false;
+	}
+};
+
+const buildPromotionPayload = () => {
+	if (!serviceForm.value.promotionEnabled) {
+		return null;
+	}
+	return {
+		enabled: true,
+		compareAt: serviceForm.value.promotionCompareAt,
+		price: serviceForm.value.promotionPrice,
+		label: serviceForm.value.promotionLabel || null,
+	};
 };
 
 const clearFilters = () => {
@@ -920,24 +1322,56 @@ const openCreateDialog = () => {
 		name: "",
 		categoryId: null,
 		description: "",
-		price: null,
+		price: "",
 		duration: null,
 		status: "active",
+		pricingMode: "fixed",
+		promotionEnabled: false,
+		promotionCompareAt: null,
+		promotionPrice: null,
+		promotionLabel: "",
 	};
+	galleryItems.value = [];
 	errors.value = {};
 	showDialog.value = true;
 };
 
+const resolveCategoryUuidForService = (service) => {
+	const u = service.category_uuid || service.categoryUuid;
+	if (u) {
+		return u;
+	}
+	const byName = props.categories.find(
+		(c) => c.name === service.category_name || c.name === service.categoryName,
+	);
+	return byName?.uuid || null;
+};
+
 const openEditDialog = (service) => {
 	editingService.value = service;
+	const photos = service.photos || service.gallery || [];
+	const pr = service.promotion;
 	serviceForm.value = {
 		name: service.name || "",
-		categoryId: null,
+		categoryId: resolveCategoryUuidForService(service),
 		description: service.description || "",
-		price: service.basePrice || null,
+		price:
+			service.basePrice ??
+			service.base_price ??
+			(service.pricing_mode === "quote" || service.pricingMode === "quote"
+				? ""
+				: ""),
 		duration: service.duration || null,
 		status: service.status || "active",
+		pricingMode: service.pricing_mode || service.pricingMode || "fixed",
+		promotionEnabled: !!(pr && pr.enabled),
+		promotionCompareAt: pr?.compareAt ?? null,
+		promotionPrice: pr?.price ?? null,
+		promotionLabel: pr?.label || "",
 	};
+	galleryItems.value = Array.isArray(photos)
+		? photos.map((url) => ({ url, key: newGalleryKey() }))
+		: [];
 	errors.value = {};
 	showDialog.value = true;
 	closeServiceMenu();
@@ -950,10 +1384,16 @@ const closeDialog = () => {
 		name: "",
 		categoryId: null,
 		description: "",
-		price: null,
+		price: "",
 		duration: null,
 		status: "active",
+		pricingMode: "fixed",
+		promotionEnabled: false,
+		promotionCompareAt: null,
+		promotionPrice: null,
+		promotionLabel: "",
 	};
+	galleryItems.value = [];
 	errors.value = {};
 };
 
@@ -968,12 +1408,30 @@ const validateForm = () => {
 		errors.value.categoryId = "Category is required";
 	}
 
-	if (
-		serviceForm.value.price === null ||
-		serviceForm.value.price === undefined ||
-		serviceForm.value.price < 0
-	) {
-		errors.value.price = "Valid price is required";
+	const rawPrice = serviceForm.value.price;
+	const n =
+		rawPrice === "" || rawPrice === null || rawPrice === undefined
+			? null
+			: Number(rawPrice);
+
+	if (serviceForm.value.pricingMode === "fixed") {
+		if (n === null || Number.isNaN(n) || n < 0) {
+			errors.value.price = "Valid price is required for fixed-price services";
+		}
+	} else if (n !== null && !Number.isNaN(n) && n < 0) {
+		errors.value.price = "Guide price cannot be negative";
+	}
+
+	if (serviceForm.value.promotionEnabled) {
+		const ca = Number(serviceForm.value.promotionCompareAt);
+		const pr = Number(serviceForm.value.promotionPrice);
+		if (Number.isNaN(ca) || ca <= 0) {
+			errors.value.promotion = '"Before" amount must be greater than 0';
+		} else if (Number.isNaN(pr) || pr < 0) {
+			errors.value.promotion = "Promo price must be zero or greater";
+		} else if (pr > ca) {
+			errors.value.promotion = "Promo price must be less than or equal to the before price";
+		}
 	}
 
 	return Object.keys(errors.value).length === 0;
@@ -988,14 +1446,31 @@ const submitService = async () => {
 
 	try {
 		let result;
+		const rawPrice = serviceForm.value.price;
+		const parsedPrice =
+			rawPrice === "" || rawPrice === null || rawPrice === undefined
+				? null
+				: Number(rawPrice);
+		const basePricePayload =
+			serviceForm.value.pricingMode === "quote" &&
+			(parsedPrice === null || Number.isNaN(parsedPrice))
+				? null
+				: parsedPrice;
+
 		if (editingService.value) {
 			const serviceData = {
 				name: serviceForm.value.name.trim(),
-				categoryId: serviceForm.value.categoryId,
+				categoryUuid: serviceForm.value.categoryId,
 				description: serviceForm.value.description.trim() || undefined,
-				price: parseFloat(serviceForm.value.price),
+				basePrice: basePricePayload,
 				duration: serviceForm.value.duration || undefined,
 				status: serviceForm.value.status,
+				pricingMode: serviceForm.value.pricingMode,
+				photos: galleryPhotoUrls(),
+				clearPromotion: !serviceForm.value.promotionEnabled,
+				...(serviceForm.value.promotionEnabled
+					? { promotion: buildPromotionPayload() }
+					: {}),
 			};
 			result = await updateService(
 				editingService.value.uuid,
@@ -1009,9 +1484,14 @@ const submitService = async () => {
 				name: serviceForm.value.name.trim(),
 				categoryId: serviceForm.value.categoryId,
 				description: serviceForm.value.description.trim() || undefined,
-				basePrice: parseFloat(serviceForm.value.price),
+				basePrice: basePricePayload,
 				priceType: "fixed",
 				duration: serviceForm.value.duration || undefined,
+				pricingMode: serviceForm.value.pricingMode,
+				photos: galleryPhotoUrls(),
+				...(serviceForm.value.promotionEnabled
+					? { promotion: buildPromotionPayload() }
+					: {}),
 			};
 			result = await createMyCompanyService(serviceData);
 			if (result.success) {

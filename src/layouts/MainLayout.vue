@@ -356,7 +356,7 @@
 
 							<!-- Company users: global menu -->
 							<!-- Company name header -->
-							<li v-if="hasCompany" class="px-3 pt-2 pb-1">
+							<li v-if="canManageCompanyWorkspace" class="px-3 pt-2 pb-1">
 								<span
 									class="text-xs font-bold text-gray-500 uppercase tracking-wider"
 								>
@@ -365,7 +365,7 @@
 							</li>
 
 							<!-- My Company (view/edit) -->
-							<li v-if="hasCompany">
+							<li v-if="canManageCompanyWorkspace">
 								<router-link
 									to="/my-company"
 									@click="closeSidebarMobile"
@@ -397,7 +397,7 @@
 							</li>
 
 							<!-- Orders (service requests) — admin only -->
-							<li v-if="hasCompany && isCompanyAdmin">
+							<li v-if="canManageCompanyWorkspace">
 								<router-link
 									to="/my-company/requests"
 									@click="closeSidebarMobile"
@@ -426,7 +426,7 @@
 							</li>
 
 							<!-- Locations (admin only) -->
-							<li v-if="hasCompany && isCompanyAdmin">
+							<li v-if="canManageCompanyWorkspace">
 								<router-link
 									to="/my-company/locations"
 									@click="closeSidebarMobile"
@@ -461,7 +461,7 @@
 							</li>
 
 							<!-- Services (admin only — employees don't manage services) -->
-							<li v-if="hasCompany && isCompanyAdmin">
+							<li v-if="canManageCompanyWorkspace">
 								<router-link
 									to="/my-services"
 									@click="closeSidebarMobile"
@@ -490,7 +490,7 @@
 							</li>
 
 							<!-- Members (admin only) -->
-							<li v-if="hasCompany && isCompanyAdmin">
+							<li v-if="canManageCompanyWorkspace">
 								<router-link
 									to="/my-company/members"
 									@click="closeSidebarMobile"
@@ -548,7 +548,7 @@
 							</li>
 
 							<!-- Invitations (admin only) -->
-							<li v-if="hasCompany && isCompanyAdmin">
+							<li v-if="canManageCompanyWorkspace">
 								<router-link
 									to="/my-company/invitations"
 									@click="closeSidebarMobile"
@@ -644,23 +644,26 @@
 					<div
 						class="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-600"
 					>
-						<p>© 2025 SureBox. All rights reserved.</p>
+						<p>© {{ currentYear }} SureBox. All rights reserved.</p>
 						<div class="flex items-center gap-4">
-							<a
-								href="#"
+							<router-link
+								to="/privacy"
 								class="hover:text-sky-600 transition-colors"
-								>Privacy Policy</a
 							>
-							<a
-								href="#"
+								Política de privacidad
+							</router-link>
+							<router-link
+								to="/terms"
 								class="hover:text-sky-600 transition-colors"
-								>Terms of Service</a
 							>
-							<a
-								href="#"
+								Términos y condiciones
+							</router-link>
+							<router-link
+								to="/help"
 								class="hover:text-sky-600 transition-colors"
-								>Support</a
 							>
+								Ayuda
+							</router-link>
 						</div>
 					</div>
 				</div>
@@ -678,6 +681,7 @@ import { usePermissions } from "@/composables/usePermissions";
 
 const route = useRoute();
 const router = useRouter();
+const currentYear = new Date().getFullYear();
 const { logout: logoutUser, getCurrentUser } = useAuth();
 const authStore = useAuthStore();
 const { canViewNfc } = usePermissions();
@@ -693,6 +697,10 @@ const userEmail = computed(
 
 // Computed property to check if user has company
 const hasCompany = computed(() => authStore.hasCompany.value);
+
+const canManageCompanyWorkspace = computed(
+	() => authStore.canManageCompanyWorkspace.value,
+);
 
 // isCompanyAdmin / isCompanyEmployee — misma lógica que el router (utils/companyContext)
 const isCompanyAdmin = computed(() => authStore.isCompanyAdmin.value);

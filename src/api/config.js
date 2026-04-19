@@ -165,7 +165,10 @@ export const handleApiError = (error) => {
 			case 401:
 				return 'Unauthorized. Please login again.';
 			case 403:
-				return 'You do not have permission to perform this action.';
+				return (
+					message ||
+					'You do not have permission to perform this action.'
+				);
 			case 404:
 				return message || 'Resource not found.';
 			case 409:

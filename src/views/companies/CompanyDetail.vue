@@ -623,7 +623,7 @@
 											d="M12 4v16m8-8H4"
 										/>
 									</svg>
-									Add Category
+									Add from catalogue
 								</button>
 							</div>
 							<CategoriesList
@@ -990,13 +990,18 @@
 						@click="showAddCategoryDialog = false"
 					></div>
 					<div
-						class="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6"
+						class="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6"
 					>
 						<!-- Header -->
 						<div class="flex items-center justify-between mb-5">
-							<h3 class="text-lg font-semibold text-gray-900">
-								Add Category
-							</h3>
+							<div>
+								<h3 class="text-lg font-semibold text-gray-900">
+									Add from catalogue
+								</h3>
+								<p class="text-sm text-gray-500 mt-1">
+									Choose platform subcategories this company will use for services.
+								</p>
+							</div>
 							<button
 								@click="showAddCategoryDialog = false"
 								class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -1018,37 +1023,43 @@
 						</div>
 
 						<!-- Body -->
-						<div class="space-y-4">
-							<div>
-								<label
-									for="category-name"
-									class="block text-sm font-medium text-gray-700 mb-1"
-								>
-									Category Name
-									<span class="text-red-500">*</span>
-								</label>
-								<input
-									id="category-name"
-									v-model="newCategory.name"
-									type="text"
-									placeholder="e.g., Plumbing"
-									class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#0D65AE] focus:border-transparent outline-none"
-								/>
+						<div class="max-h-[50vh] overflow-y-auto text-sm">
+							<div
+								v-if="loadingMasterCategories"
+								class="py-10 text-center text-gray-600"
+							>
+								Loading catalogue…
 							</div>
-							<div>
-								<label
-									for="category-description"
-									class="block text-sm font-medium text-gray-700 mb-1"
+							<div
+								v-else-if="!masterCategoryTree.length"
+								class="text-gray-600 py-2"
+							>
+								No catalogue categories are available. Seed master categories in
+								the API project.
+							</div>
+							<div v-else class="space-y-4">
+								<div
+									v-for="parent in masterCategoryTree"
+									:key="parent.uuid"
+									class="border border-gray-200 rounded-lg p-3"
 								>
-									Description
-								</label>
-								<textarea
-									id="category-description"
-									v-model="newCategory.description"
-									rows="3"
-									placeholder="Category description"
-									class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#0D65AE] focus:border-transparent outline-none resize-none"
-								></textarea>
+									<p class="font-medium text-gray-900 mb-2">{{ parent.name }}</p>
+									<div class="space-y-2 pl-1">
+										<label
+											v-for="sub in parent.subcategories || []"
+											:key="sub.uuid"
+											class="flex items-start gap-2 text-gray-700 cursor-pointer"
+										>
+											<input
+												type="checkbox"
+												class="mt-0.5 rounded border-gray-300"
+												:value="sub.uuid"
+												v-model="selectedMasterCategoryUuids"
+											/>
+											<span>{{ sub.name }}</span>
+										</label>
+									</div>
+								</div>
 							</div>
 						</div>
 
@@ -1064,7 +1075,9 @@
 							</button>
 							<button
 								@click="submitAddCategory"
-								:disabled="addingCategory"
+								:disabled="
+									addingCategory || !selectedMasterCategoryUuids.length
+								"
 								class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#0D65AE] rounded-lg hover:bg-[#0a4f87] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
 							>
 								<svg
@@ -1087,11 +1100,7 @@
 										d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
 									/>
 								</svg>
-								{{
-									addingCategory
-										? "Adding..."
-										: "Add Category"
-								}}
+								{{ addingCategory ? "Adding…" : "Add selected" }}
 							</button>
 						</div>
 					</div>
@@ -1201,6 +1210,7 @@ import MembersList from "@/components/companies/MembersList.vue";
 import LocationsList from "@/components/companies/LocationsList.vue";
 import CategoriesList from "@/components/companies/CategoriesList.vue";
 import { formatDate } from "@/utils/formatters";
+import { getServiceCategories } from "@/api/services.api";
 
 // ── Click-outside directive ──────────────────────────────────────────────────
 const vClickOutside = {
@@ -1279,7 +1289,9 @@ const pendingDeleteFn = ref(null);
 // Form data
 const newMember = ref({ email: "", role: "" });
 const newLocation = ref({ name: "", address: "", phone: "", email: "" });
-const newCategory = ref({ name: "", description: "" });
+const masterCategoryTree = ref([]);
+const selectedMasterCategoryUuids = ref([]);
+const loadingMasterCategories = ref(false);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const confirmAction = (message, fn) => {
@@ -1618,14 +1630,26 @@ const submitAddLocation = async () => {
 };
 
 // Categories handlers
-const handleAddCategory = () => {
+const handleAddCategory = async () => {
 	if (!canManageCategoriesHere.value) {
 		showError("You do not have permission to add categories");
 		return;
 	}
 
-	newCategory.value = { name: "", description: "" };
+	selectedMasterCategoryUuids.value = [];
+	masterCategoryTree.value = [];
 	showAddCategoryDialog.value = true;
+	loadingMasterCategories.value = true;
+	try {
+		const res = await getServiceCategories({ scope: "master-tree" });
+		const body = res?.data !== undefined ? res.data : res;
+		masterCategoryTree.value = Array.isArray(body) ? body : [];
+	} catch {
+		showError("Failed to load the category catalogue");
+		showAddCategoryDialog.value = false;
+	} finally {
+		loadingMasterCategories.value = false;
+	}
 };
 
 const handleEditCategory = (category) => {
@@ -1643,9 +1667,9 @@ const handleDeleteCategory = (category) => {
 		`Are you sure you want to delete the category "${category.name}"?`,
 		async () => {
 			try {
-				const result = await deleteCompanyCategory(
+				const result = 				await deleteCompanyCategory(
 					companyId.value,
-					category.id,
+					category.uuid || category.id,
 				);
 				if (result.success) {
 					showSuccess("Category deleted successfully");
@@ -1666,21 +1690,20 @@ const submitAddCategory = async () => {
 		return;
 	}
 
-	if (!newCategory.value.name) {
-		showError("Please enter a category name");
+	if (!selectedMasterCategoryUuids.value.length) {
+		showError("Select at least one subcategory from the catalogue");
 		return;
 	}
 
 	addingCategory.value = true;
 
 	try {
-		const result = await createCompanyCategory(
-			companyId.value,
-			newCategory.value,
-		);
+		const result = await createCompanyCategory(companyId.value, {
+			masterCategoryUuids: [...selectedMasterCategoryUuids.value],
+		});
 
 		if (result.success) {
-			showSuccess("Category added successfully");
+			showSuccess("Categories added successfully");
 			showAddCategoryDialog.value = false;
 			loadCategories();
 		} else {

@@ -18,7 +18,7 @@ import apiClient, { handleApiError } from './config';
  *   GET    /admin/companies/{companyId}/services                       – list company services
  *   POST   /admin/companies/{companyId}/services                       – create company service
  *   GET    /admin/companies/{companyId}/categories                     – list company categories
- *   POST   /admin/companies/{companyId}/categories                     – create company category
+ *   POST   /admin/companies/{companyId}/categories                     – adopt master categories for company
  *   GET    /admin/companies/{companyId}/categories/{categoryId}        – get company category
  *   PUT    /admin/companies/{companyId}/categories/{categoryId}        – update company category
  *   DELETE /admin/companies/{companyId}/categories/{categoryId}        – delete company category
@@ -29,7 +29,7 @@ import apiClient, { handleApiError } from './config';
  *   PUT    /my/company/services/{serviceId}                            – update service in own company
  *   DELETE /my/company/services/{serviceId}                            – delete service from own company
  *   GET    /my/company/categories                                      – list own company categories
- *   POST   /my/company/categories                                      – create own company category
+ *   POST   /my/company/categories                                      – adopt master categories into own company
  *   GET    /my/company/categories/{categoryId}                         – get own company category
  *   PUT    /my/company/categories/{categoryId}                         – update own company category
  *   DELETE /my/company/categories/{categoryId}                         – delete own company category
@@ -44,9 +44,11 @@ import apiClient, { handleApiError } from './config';
  * @param {number} [params.page] - Page number (default 1)
  * @param {number} [params.limit] - Items per page (default 20)
  * @param {string} [params.companyId] - Filter by company UUID
- * @param {number} [params.categoryId] - Filter by service category ID
+ * @param {number} [params.categoryId] - Filter by company category numeric id (legacy)
+ * @param {string} [params.masterCategoryUuid] - Filter catalogue by platform master subcategory UUID
  * @param {string} [params.search] - Search by service name
  * @param {string} [params.priceType] - 'fixed' | 'hourly' | 'per_unit'
+ * @param {string} [params.pricingMode] - 'fixed' | 'quote' (fixed price vs quote)
  * @param {number} [params.cityId] - Filter by city ID
  * @returns {Promise<object>} Paginated response with services array
  */
@@ -59,13 +61,58 @@ export const browseServices = async (params = {}) => {
 	}
 };
 
+/**
+ * Slim company profile for the customer catalogue modal.
+ * @param {string} companyUuid
+ * @returns {Promise<object>} API envelope with preview data
+ */
+export const getCompanyCatalog = async (companyUuid) => {
+	try {
+		const response = await apiClient.get(`/companies/catalog/${companyUuid}`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/** @returns {Promise<object>} */
+export const listServiceFavorites = async () => {
+	try {
+		const response = await apiClient.get('/my/service-favorites');
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/** @returns {Promise<object>} */
+export const addServiceFavorite = async (serviceUuid) => {
+	try {
+		const response = await apiClient.post(`/my/service-favorites/${serviceUuid}`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/** @returns {Promise<object>} */
+export const removeServiceFavorite = async (serviceUuid) => {
+	try {
+		const response = await apiClient.delete(`/my/service-favorites/${serviceUuid}`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
 // ==================== GLOBAL SERVICE CATEGORIES ====================
 
 /**
  * List service categories.
  * Pass companyId to include company-specific categories; omit for global categories only.
  * @param {object} [params] - Query parameters
- * @param {number} [params.companyId] - Optional company ID to include company-specific categories
+ * @param {number} [params.companyId] - Optional company ID to list that company's adopted categories
+ * @param {string} [params.scope] - `master` | `master-tree` | `catalog` for platform taxonomy; omit for company/global rows
  * @returns {Promise<object>} Response with categories array
  */
 export const getServiceCategories = async (params = {}) => {
@@ -380,12 +427,11 @@ export const getMyCompanyCategory = async (categoryId) => {
 };
 
 /**
- * Create a service category for the authenticated user's company.
+ * Adopt platform master categories into the authenticated user's company.
  * Requires `manage_services` permission.
  * @param {object} categoryData
- * @param {string} categoryData.name - Category name (required)
- * @param {string} [categoryData.description]
- * @returns {Promise<object>} Response with created category
+ * @param {string[]} categoryData.masterCategoryUuids - Subcategory UUIDs from `GET /services/categories?scope=master`
+ * @returns {Promise<object>} Response with adopted categories array
  */
 export const createMyCompanyCategory = async (categoryData) => {
 	try {
@@ -432,6 +478,10 @@ export const deleteMyCompanyCategory = async (categoryId) => {
 export default {
 	// Public catalogue
 	browseServices,
+	getCompanyCatalog,
+	listServiceFavorites,
+	addServiceFavorite,
+	removeServiceFavorite,
 
 	// Global categories
 	getServiceCategories,

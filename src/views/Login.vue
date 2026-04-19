@@ -23,7 +23,7 @@
 				Sign In
 			</router-link>
 			<router-link
-				to="/register"
+				:to="{ path: '/register', query: authQuery }"
 				class="flex-1 text-center py-3 px-4 rounded-lg font-medium transition-all"
 				:class="
 					!isLoginRoute
@@ -239,7 +239,7 @@
 			<p class="text-sm text-gray-600">
 				New to Surebox?
 				<router-link
-					to="/register"
+					:to="{ path: '/register', query: authQuery }"
 					class="font-semibold text-[#0D65AE] hover:text-[#0a4f87] transition-colors ml-1"
 				>
 					Create an account
@@ -250,16 +250,35 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onMounted, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useAuth, useToast } from "@/composables";
 import { useAuthStore } from "@/stores/auth.store";
+import {
+	canManageCompanyWorkspace,
+	userHasCompanyMembership,
+} from "@/utils/companyContext";
+import { acceptInvitation } from "@/api/auth.api";
 import Checkbox from "primevue/checkbox";
 const { showSuccess, showError, showWarning, showInfo, showToast } = useToast();
 
+const route = useRoute();
 const router = useRouter();
-const { login, state: authState } = useAuth();
+const { login, getCurrentUser, state: authState } = useAuth();
 const authStore = useAuthStore();
+
+/** Preserve invite token when switching to register */
+const authQuery = computed(() => {
+	const q = route.query;
+	const out = {};
+	if (typeof q.inviteToken === "string" && q.inviteToken) {
+		out.inviteToken = q.inviteToken;
+	}
+	if (typeof q.email === "string" && q.email) {
+		out.email = q.email;
+	}
+	return out;
+});
 
 const email = ref("");
 const password = ref("");
@@ -269,6 +288,17 @@ const loginError = ref("");
 
 const loading = computed(() => authState.isLoading);
 const isLoginRoute = computed(() => true);
+
+onMounted(() => {
+	const em = route.query.email;
+	if (typeof em === "string" && em) {
+		try {
+			email.value = decodeURIComponent(em);
+		} catch {
+			email.value = em;
+		}
+	}
+});
 
 function goForgot() {
 	router.push("/forgot-password");
@@ -284,16 +314,40 @@ async function handleLogin() {
 		});
 
 		if (result.success) {
+			const inviteTok = route.query.inviteToken;
+			if (typeof inviteTok === "string" && inviteTok.trim()) {
+				try {
+					await acceptInvitation(inviteTok.trim(), {});
+					await getCurrentUser().catch(() => {});
+					showSuccess("Te has unido a la empresa.");
+				} catch (accErr) {
+					const m = accErr?.message || "";
+					if (m.toLowerCase().includes("already a member")) {
+						showInfo("Ya formabas parte de esta empresa.");
+					} else {
+						showError(m || "No se pudo aplicar la invitación.");
+					}
+				}
+				await getCurrentUser().catch(() => {});
+				const u = authStore.state.user;
+				router.replace(
+					canManageCompanyWorkspace(u) ? "/my-company" : "/",
+				);
+				return;
+			}
+
 			const redirect = router.currentRoute.value.query.redirect;
 			if (redirect) {
 				router.push(redirect);
 			} else {
 				const user = authStore.state.user;
-				const hasCompany =
-					user?.companies?.length > 0 ||
-					!!user?.company_id ||
-					!!user?.companyId;
-				router.push(hasCompany ? "/my-company" : "/services");
+				if (canManageCompanyWorkspace(user)) {
+					router.push("/my-company");
+				} else if (userHasCompanyMembership(user)) {
+					router.push("/");
+				} else {
+					router.push("/services");
+				}
 			}
 		} else {
 			loginError.value =
