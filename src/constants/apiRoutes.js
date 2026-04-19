@@ -55,3 +55,10 @@ export const ApiMyCompany = {
 	SERVICE_REQUEST_ASSIGN: (requestId) => `/my/company/service-requests/${requestId}/assign`,
 	SERVICE_REQUEST_QUOTE: (requestId) => `/my/company/service-requests/${requestId}/quote`,
 };
+
+/** Feed global en plataforma (polling); mismo contenido para usuarios autenticados. */
+export const ApiPlatformNotifications = {
+	LIST: '/my/notifications',
+	UNREAD_COUNT: '/my/notifications/unread-count',
+	MARK_READ: '/my/notifications/mark-read',
+};
