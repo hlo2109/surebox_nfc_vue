@@ -723,10 +723,7 @@
 									v-for="quote in currentRequest.quotes"
 									:key="quote.uuid || quote.id"
 									:quote="quote"
-									:show-actions="
-										currentRequest.status === 'quoted' ||
-										currentRequest.status === 'pending'
-									"
+									:show-actions="quoteAllowsActions(quote)"
 									@accept="handleAcceptQuote"
 									@reject="handleRejectQuote"
 									@view="handleViewQuote"
@@ -1375,6 +1372,97 @@
 			</div>
 		</Transition>
 	</Teleport>
+
+	<!-- Reject quote (reason required) -->
+	<Teleport to="body">
+		<Transition name="modal">
+			<div
+				v-if="showRejectQuoteDialog"
+				class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+			>
+				<div
+					class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+					@click="showRejectQuoteDialog = false"
+				/>
+				<div
+					class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+				>
+					<div
+						class="bg-gradient-to-r from-red-600 to-rose-700 px-6 py-5 flex items-center justify-between"
+					>
+						<div>
+							<h2 class="text-lg font-bold text-white">
+								Reject quote
+							</h2>
+							<p class="text-red-100 text-sm mt-0.5">
+								Please give a reason. The company will see it so they can
+								adjust terms or send a new offer.
+							</p>
+						</div>
+						<button
+							type="button"
+							@click="showRejectQuoteDialog = false"
+							class="text-red-100 hover:text-white transition-colors rounded-lg p-1 hover:bg-white/10"
+						>
+							<svg
+								class="w-5 h-5"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M6 18L18 6M6 6l12 12"
+								/>
+							</svg>
+						</button>
+					</div>
+					<div class="p-6 space-y-3">
+						<label class="block text-sm font-medium text-gray-700">
+							Reason for rejection
+							<span class="text-red-500">*</span>
+						</label>
+						<textarea
+							v-model="rejectQuoteReason"
+							rows="4"
+							minlength="3"
+							placeholder="e.g. price is above budget, need a different scope…"
+							class="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm resize-y"
+						/>
+						<p class="text-xs text-gray-500">
+							At least 3 characters. You can still receive further quotes from
+							the company.
+						</p>
+					</div>
+					<div
+						class="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 bg-gray-50"
+					>
+						<button
+							type="button"
+							class="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-white"
+							@click="showRejectQuoteDialog = false"
+						>
+							Cancel
+						</button>
+						<button
+							type="button"
+							class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+							:disabled="rejectQuoteSubmitting"
+							@click="confirmRejectQuote"
+						>
+							{{
+								rejectQuoteSubmitting
+									? "Sending…"
+									: "Confirm rejection"
+							}}
+						</button>
+					</div>
+				</div>
+			</div>
+		</Transition>
+	</Teleport>
 </template>
 
 <script setup>
@@ -1386,6 +1474,7 @@ import {
 	cancelServiceRequest,
 } from "@/api/serviceRequests.api";
 import QuoteCard from "@/components/requests/QuoteCard.vue";
+import { useToast } from "@/composables/useToast";
 import { formatCurrency, formatDate, formatDateTime } from "@/utils/formatters";
 import {
 	requestServiceName,
@@ -1400,6 +1489,7 @@ import {
 
 const router = useRouter();
 const route = useRoute();
+const toast = useToast();
 
 /** Route passes `:id` with `props: true`; must declare because template has multiple roots (div + Teleport). */
 const props = defineProps({
@@ -1424,6 +1514,10 @@ const quotesLoading = ref(false);
 const menuOpen = ref(false);
 const menuContainerRef = ref(null);
 const showStatusDialog = ref(false);
+const showRejectQuoteDialog = ref(false);
+const rejectQuoteTarget = ref(null);
+const rejectQuoteReason = ref("");
+const rejectQuoteSubmitting = ref(false);
 const newStatus = ref("");
 const isUpdating = ref(false);
 
@@ -1438,6 +1532,15 @@ const assignmentsList = computed(() =>
 	listRequestAssignments(currentRequest.value),
 );
 const assignmentsCount = computed(() => assignmentsList.value.length);
+
+/** Only pending quotes while the request is still in quoting phase. */
+function quoteAllowsActions(quote) {
+	if (!quote || quote.status !== "pending") {
+		return false;
+	}
+	const st = currentRequest.value?.status;
+	return st === "quoted" || st === "pending";
+}
 
 const statsGridClass = computed(() =>
 	showQuotesTab.value
@@ -1672,21 +1775,44 @@ const handleAcceptQuote = async (quote) => {
 		const quoteUuid = quote.uuid || quote.id;
 		if (!requestUuid || !quoteUuid) return;
 		await respondToQuote(requestUuid, quoteUuid, "accept");
+		toast.showSuccess("Quote accepted");
 		await loadRequest();
 	} catch (err) {
 		console.error("Failed to accept quote:", err);
+		toast.showError(err?.message || "Could not accept the quote");
 	}
 };
 
-const handleRejectQuote = async (quote) => {
+const handleRejectQuote = (quote) => {
+	rejectQuoteTarget.value = quote;
+	rejectQuoteReason.value = "";
+	showRejectQuoteDialog.value = true;
+};
+
+const confirmRejectQuote = async () => {
+	const reason = rejectQuoteReason.value.trim();
+	if (reason.length < 3) {
+		toast.showError("Please enter a reason with at least 3 characters.");
+		return;
+	}
+	const requestUuid = currentRequest.value?.uuid;
+	const quote = rejectQuoteTarget.value;
+	const quoteUuid = quote?.uuid || quote?.id;
+	if (!requestUuid || !quoteUuid) {
+		showRejectQuoteDialog.value = false;
+		return;
+	}
+	rejectQuoteSubmitting.value = true;
 	try {
-		const requestUuid = currentRequest.value?.uuid;
-		const quoteUuid = quote.uuid || quote.id;
-		if (!requestUuid || !quoteUuid) return;
-		await respondToQuote(requestUuid, quoteUuid, "reject");
+		await respondToQuote(requestUuid, quoteUuid, "reject", reason);
+		toast.showSuccess("Quote rejected");
+		showRejectQuoteDialog.value = false;
 		await loadRequest();
 	} catch (err) {
 		console.error("Failed to reject quote:", err);
+		toast.showError(err?.message || "Could not reject the quote");
+	} finally {
+		rejectQuoteSubmitting.value = false;
 	}
 };
 

@@ -983,6 +983,8 @@ export const assignEmployeeMyCompany = async (requestId, employeeIdOrIds) => {
  * @param {object} quoteData
  * @param {number}  quoteData.totalPrice - Required
  * @param {object}  [quoteData.details]
+ * @param {'initial'|'counter_proposal'|'revised_offer'} [quoteData.proposalType] - After a rejection: counter_proposal or revised_offer
+ * @param {string} [quoteData.parentQuoteUuid] - UUID of the rejected quote this offer responds to
  * @returns {Promise<object>}
  */
 export const createMyCompanyQuote = async (requestId, quoteData) => {

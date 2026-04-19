@@ -48,6 +48,11 @@ export function usePlatformNotifications(router) {
 	const loading = ref(false);
 	let pollTimer = null;
 
+	function clearFeed() {
+		items.value = [];
+		unreadCount.value = 0;
+	}
+
 	function showDesktopIfNeeded(newRows) {
 		if (!newRows.length || typeof window === 'undefined') {
 			return;
@@ -82,6 +87,7 @@ export function usePlatformNotifications(router) {
 
 	async function refreshFull() {
 		if (!getAccessToken()) {
+			clearFeed();
 			return;
 		}
 		loading.value = true;
@@ -97,6 +103,7 @@ export function usePlatformNotifications(router) {
 
 	async function pollIncremental() {
 		if (!getAccessToken()) {
+			stop();
 			return;
 		}
 		try {
@@ -141,8 +148,10 @@ export function usePlatformNotifications(router) {
 	function start() {
 		stop();
 		if (!getAccessToken()) {
+			clearFeed();
 			return;
 		}
+		clearFeed();
 		void refreshFull();
 		pollTimer = window.setInterval(() => {
 			void pollIncremental();
@@ -154,12 +163,14 @@ export function usePlatformNotifications(router) {
 			clearInterval(pollTimer);
 			pollTimer = null;
 		}
+		clearFeed();
 	}
 
 	return {
 		items,
 		unreadCount,
 		loading,
+		clearFeed,
 		refreshFull,
 		pollIncremental,
 		markAllVisibleRead,

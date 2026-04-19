@@ -79,13 +79,18 @@ export const cancelServiceRequest = async (requestId) => {
  * @param {string} requestId - Service request UUID
  * @param {string} quoteId - Quote UUID
  * @param {'accept' | 'reject'} action - The response action
+ * @param {string} [rejectionReason] - Obligatorio si action es reject (mín. 3 caracteres en API)
  * @returns {Promise<object>} Response
  */
-export const respondToQuote = async (requestId, quoteId, action) => {
+export const respondToQuote = async (requestId, quoteId, action, rejectionReason) => {
 	try {
+		const body = { action };
+		if (action === 'reject' && rejectionReason != null) {
+			body.rejectionReason = rejectionReason;
+		}
 		const response = await apiClient.put(
 			ApiServiceRequests.QUOTE_RESPOND(requestId, quoteId),
-			{ action },
+			body,
 		);
 		return response.data;
 	} catch (error) {

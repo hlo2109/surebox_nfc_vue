@@ -87,12 +87,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { getAccessToken } from '@/utils/storage';
 import { usePlatformNotifications } from '@/composables/usePlatformNotifications';
+import { useAuthStore } from '@/stores/auth.store';
 
 const router = useRouter();
+const authStore = useAuthStore();
 const {
 	items,
 	unreadCount,
@@ -166,10 +168,19 @@ function onDocClick(e) {
 	}
 }
 
+// Misma sesión puede cambiar de usuario (logout/login) sin recargar: el feed debe alinearse al JWT / usuario actual.
+watch(
+	() => [authStore.state.user?.id, !!authStore.state.accessToken],
+	() => {
+		stop();
+		if (getAccessToken() && authStore.state.user?.id != null) {
+			start();
+		}
+	},
+	{ immediate: true },
+);
+
 onMounted(() => {
-	if (getAccessToken()) {
-		start();
-	}
 	document.addEventListener('click', onDocClick);
 });
 

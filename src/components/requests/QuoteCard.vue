@@ -41,9 +41,15 @@
 				</div>
 				<div>
 					<h4 class="font-semibold text-gray-900 text-base">
-						Quote #{{ quote.id }}
+						Quote
 					</h4>
 					<p class="text-sm text-gray-500">{{ formattedDate }}</p>
+					<p
+						v-if="proposalKindLabel"
+						class="text-xs font-medium text-indigo-700 mt-1"
+					>
+						{{ proposalKindLabel }}
+					</p>
 				</div>
 			</div>
 
@@ -63,9 +69,9 @@
 				class="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-lg"
 			>
 				<div>
-					<p class="text-sm text-gray-500">Quote Amount</p>
+					<p class="text-sm text-gray-500">Amount</p>
 					<p class="text-2xl font-bold text-green-600">
-						{{ formatCurrency(quote.amount) }}
+						{{ formatCurrency(quoteAmount) }}
 					</p>
 				</div>
 				<svg
@@ -84,7 +90,7 @@
 			</div>
 
 			<!-- Estimated Duration -->
-			<div class="flex items-start gap-3">
+			<div v-if="estimatedDaysLabel" class="flex items-start gap-3">
 				<svg
 					class="w-4 h-4 text-gray-400 mt-0.5 shrink-0"
 					fill="none"
@@ -99,16 +105,38 @@
 					/>
 				</svg>
 				<div class="flex-1">
-					<p class="text-sm text-gray-500">Estimated Duration</p>
+					<p class="text-sm text-gray-500">Estimated duration</p>
 					<p class="font-medium text-gray-800">
-						{{ quote.estimatedDays }}
-						{{ quote.estimatedDays === 1 ? "day" : "days" }}
+						{{ estimatedDaysLabel }}
 					</p>
 				</div>
 			</div>
 
-			<!-- Notes -->
-			<div v-if="quote.notes" class="flex items-start gap-3">
+			<!-- Company message / breakdown -->
+			<div v-if="detailText" class="flex items-start gap-3">
+				<svg
+					class="w-4 h-4 text-gray-400 mt-0.5 shrink-0"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M4 6h16M4 12h16M4 18h7"
+					/>
+				</svg>
+				<div class="flex-1 min-w-0">
+					<p class="text-sm text-gray-500">Quote details</p>
+					<p class="text-gray-800 text-sm whitespace-pre-wrap break-words">
+						{{ detailText }}
+					</p>
+				</div>
+			</div>
+
+			<!-- Notes (legacy field) -->
+			<div v-if="quote.notes && quote.notes !== detailText" class="flex items-start gap-3">
 				<svg
 					class="w-4 h-4 text-gray-400 mt-0.5 shrink-0"
 					fill="none"
@@ -124,7 +152,7 @@
 				</svg>
 				<div class="flex-1">
 					<p class="text-sm text-gray-500">Notes</p>
-					<p class="text-gray-800">{{ quote.notes }}</p>
+					<p class="text-gray-800 text-sm whitespace-pre-wrap">{{ quote.notes }}</p>
 				</div>
 			</div>
 
@@ -179,6 +207,15 @@
 					</p>
 				</div>
 			</div>
+
+			<!-- Customer rejection reason -->
+			<div
+				v-if="quote.status === 'rejected' && customerRejectionText"
+				class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+			>
+				<p class="font-medium text-red-800 mb-1">Rejection reason</p>
+				<p class="whitespace-pre-wrap">{{ customerRejectionText }}</p>
+			</div>
 		</div>
 
 		<!-- Footer Actions -->
@@ -205,7 +242,7 @@
 							d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
 						/>
 					</svg>
-					Accept Quote
+					Accept
 				</button>
 				<button
 					class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-all"
@@ -276,6 +313,98 @@ const props = defineProps({
 const emit = defineEmits(["accept", "reject", "view"]);
 
 const loading = ref(false);
+
+const quoteAmount = computed(() => {
+	const q = props.quote;
+	const n =
+		q?.totalPrice ??
+		q?.total_price ??
+		q?.amount ??
+		null;
+	if (n == null || Number.isNaN(Number(n))) {
+		return 0;
+	}
+	return Number(n);
+});
+
+const estimatedDaysLabel = computed(() => {
+	const d =
+		props.quote?.estimatedDays ??
+		props.quote?.estimated_days ??
+		null;
+	if (d == null || d === "") {
+		return "";
+	}
+	const n = Number(d);
+	if (Number.isNaN(n)) {
+		return "";
+	}
+	return `${n} ${n === 1 ? "day" : "days"}`;
+});
+
+const detailText = computed(() => {
+	const det = props.quote?.details;
+	if (det == null) {
+		return "";
+	}
+	if (typeof det === "string") {
+		return det.trim();
+	}
+	if (typeof det === "object") {
+		const parts = [];
+		if (det.summary) {
+			parts.push(String(det.summary));
+		}
+		if (det.description) {
+			parts.push(String(det.description));
+		}
+		if (det.lineItems && Array.isArray(det.lineItems)) {
+			parts.push(
+				det.lineItems
+					.map((l) =>
+						typeof l === "string"
+							? l
+							: [l.label, l.amount].filter(Boolean).join(": "),
+					)
+					.join("\n"),
+			);
+		}
+		const joined = parts.filter(Boolean).join("\n\n").trim();
+		if (joined) {
+			return joined;
+		}
+		try {
+			return JSON.stringify(det, null, 2);
+		} catch {
+			return "";
+		}
+	}
+	return String(det);
+});
+
+const customerRejectionText = computed(
+	() =>
+		props.quote?.customerRejectionReason ??
+		props.quote?.customer_rejection_reason ??
+		"",
+);
+
+const proposalKindLabel = computed(() => {
+	const t = (
+		props.quote?.proposalType ??
+		props.quote?.proposal_type ??
+		"initial"
+	)
+		.toString()
+		.toLowerCase();
+	if (t === "counter_proposal") {
+		return "Company counter-proposal";
+	}
+	if (t === "revised_offer") {
+		return "Revised offer (second chance)";
+	}
+	return "";
+});
 
 // Status configuration
 const statusConfig = {

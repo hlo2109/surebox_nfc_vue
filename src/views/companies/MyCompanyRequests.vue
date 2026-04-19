@@ -1005,26 +1005,86 @@
 								<div
 									v-for="quote in selectedRequest.quotes"
 									:key="quote.uuid || quote.id"
-									class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start justify-between gap-4"
+									class="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3"
 								>
-									<div>
+									<div class="min-w-0 flex-1">
+										<div class="flex flex-wrap items-center gap-2 mb-1">
+											<p
+												class="text-sm font-semibold text-blue-900"
+											>
+												{{
+													formatQuoteCurrency(
+														quoteRowAmount(quote),
+													)
+												}}
+											</p>
+											<span
+												v-if="quoteProposalLabel(quote)"
+												class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-indigo-100 text-indigo-800 border border-indigo-200"
+											>
+												{{ quoteProposalLabel(quote) }}
+											</span>
+										</div>
 										<p
-											class="text-sm font-semibold text-blue-900"
+											v-if="quoteDetailsPreview(quote)"
+											class="text-xs text-blue-700 mt-0.5 whitespace-pre-wrap break-words"
 										>
-											${{
-												Number(
-													quote.totalPrice ??
-														quote.total_price ??
-														0,
-												).toFixed(2)
-											}}
+											{{ quoteDetailsPreview(quote) }}
 										</p>
-										<p
-											v-if="quote.details"
-											class="text-xs text-blue-700 mt-0.5"
+										<div
+											v-if="
+												(quote.status || '')
+													.toLowerCase() ===
+													'rejected' &&
+												(quote.customerRejectionReason ||
+													quote.customer_rejection_reason)
+											"
+											class="mt-2 rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-xs text-red-900"
 										>
-											{{ quote.details }}
-										</p>
+											<p class="font-medium text-red-800">
+												Customer rejection reason
+											</p>
+											<p class="whitespace-pre-wrap mt-0.5">
+												{{
+													quote.customerRejectionReason ||
+													quote.customer_rejection_reason
+												}}
+											</p>
+										</div>
+										<div
+											v-if="
+												(quote.status || '')
+													.toLowerCase() ===
+													'rejected' &&
+												canSendQuoteForSelection
+											"
+											class="mt-3 flex flex-wrap gap-2"
+										>
+											<button
+												type="button"
+												class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-800 bg-white border border-indigo-300 rounded-lg hover:bg-indigo-50"
+												@click="
+													setQuoteFollowUp(
+														quote,
+														'counter_proposal',
+													)
+												"
+											>
+												Counter-proposal
+											</button>
+											<button
+												type="button"
+												class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-900 bg-emerald-50 border border-emerald-300 rounded-lg hover:bg-emerald-100"
+												@click="
+													setQuoteFollowUp(
+														quote,
+														'revised_offer',
+													)
+												"
+											>
+												Revised offer (second chance)
+											</button>
+										</div>
 										<p class="text-xs text-blue-500 mt-1">
 											{{
 												formatDate(
@@ -1032,20 +1092,35 @@
 														quote.created_at,
 												)
 											}}
+											<span
+												v-if="quote.parentQuoteUuid"
+												class="text-blue-400 ml-1"
+											>
+												· Responds to
+												{{
+													String(
+														quote.parentQuoteUuid,
+													).slice(0, 8)
+												}}…
+											</span>
 										</p>
 									</div>
-									<span
-										:class="[
-											'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
-											getStatusColor(quote.status),
-										]"
+									<div
+										class="flex flex-row sm:flex-col items-center sm:items-end gap-2 shrink-0"
 									>
-										{{
-											formatStatus(
-												quote.status || "pending",
-											)
-										}}
-									</span>
+										<span
+											:class="[
+												'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
+												getStatusColor(quote.status),
+											]"
+										>
+											{{
+												formatStatus(
+													quote.status || "pending",
+												)
+											}}
+										</span>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -1060,14 +1135,14 @@
 							<h3
 								class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3"
 							>
-								Company activity
+								Activity log (quotes & status)
 							</h3>
-							<ul class="space-y-2 max-h-48 overflow-y-auto pr-1">
+							<ul class="space-y-2 max-h-96 overflow-y-auto pr-1">
 								<li
 									v-for="(entry, idx) in [
 										...selectedRequest.companyActivityLog,
 									].reverse()"
-									:key="`${entry.at || 'e'}-${idx}`"
+									:key="`${entry.at || 'e'}-${idx}-${entry.type || ''}`"
 									class="text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"
 								>
 									<div class="text-slate-500 mb-0.5">
@@ -1079,6 +1154,18 @@
 										</span>
 									</div>
 									<p
+										v-if="activityEntryTitle(entry)"
+										class="text-slate-700 font-medium text-xs sm:text-sm mb-0.5"
+									>
+										{{ activityEntryTitle(entry) }}
+									</p>
+									<p
+										v-if="activityEntryMetaLine(entry)"
+										class="text-slate-500 text-[11px] sm:text-xs mb-1"
+									>
+										{{ activityEntryMetaLine(entry) }}
+									</p>
+									<p
 										v-if="entry.message"
 										class="text-slate-800 whitespace-pre-wrap"
 									>
@@ -1088,12 +1175,13 @@
 							</ul>
 						</div>
 
-						<!-- Send Quote: only quote-priced services while pending -->
+						<!-- Send Quote: quote-priced; quoted = can resend after rejection -->
 						<div
 							v-if="
-								selectedRequest.status === 'pending' &&
 								canManageServices &&
-								isQuotePricingRequest(selectedRequest)
+								isQuotePricingRequest(selectedRequest) &&
+								(selectedRequest.status === 'pending' ||
+									selectedRequest.status === 'quoted')
 							"
 						>
 							<h3
@@ -1101,6 +1189,66 @@
 							>
 								Send a Quote
 							</h3>
+							<p
+								v-if="
+									!canSendQuoteForSelection &&
+									sendQuoteBlockedReason
+								"
+								class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3"
+							>
+								{{ sendQuoteBlockedReason }}
+							</p>
+							<div
+								v-if="
+									canSendQuoteForSelection &&
+									quoteSendNeedsFollowUpContext(
+										selectedRequest,
+									) &&
+									quoteSendContext
+								"
+								class="flex flex-wrap items-center justify-between gap-2 text-sm bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2 mb-3"
+							>
+								<p class="text-indigo-900">
+									<span class="font-medium">Send mode:</span>
+									{{
+										quoteSendContext.proposalType ===
+										"counter_proposal"
+											? " Counter-proposal"
+											: " Revised offer (second chance)"
+									}}
+									<span class="text-indigo-700 text-xs block sm:inline sm:ml-1">
+										(ref. quote
+										{{
+											String(
+												quoteSendContext.parentQuoteUuid,
+											).slice(0, 8)
+										}}…)
+									</span>
+								</p>
+								<button
+									type="button"
+									class="text-xs font-medium text-indigo-700 underline hover:text-indigo-900"
+									@click="clearQuoteFollowUp"
+								>
+									Change / clear
+								</button>
+							</div>
+							<p
+								v-else-if="
+									canSendQuoteForSelection &&
+									quoteSendNeedsFollowUpContext(
+										selectedRequest,
+									) &&
+									!quoteSendContext
+								"
+								class="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3"
+							>
+								There are rejected quotes: choose
+								<strong>Counter-proposal</strong> or
+								<strong>Revised offer (second chance)</strong> on the matching
+								row before sending a new quote (this is recorded in the
+								activity log).
+							</p>
 							<div
 								class="bg-white border border-gray-200 rounded-xl p-4 space-y-3"
 							>
@@ -1131,14 +1279,13 @@
 								<div>
 									<label
 										class="block text-sm font-medium text-gray-700 mb-1"
-										>Mensaje para el cliente (correo / presentación)</label
+										>Message to the customer (email / cover text)</label
 									>
 									<p
 										class="text-xs text-gray-500 mb-2 leading-relaxed"
 									>
-										Redacción profesional en español para acompañar la
-										cotización. Puede usar la plantilla y luego refinar con
-										IA.
+										Professional wording to accompany the quote. You can start
+										from the template and refine with AI.
 									</p>
 									<div
 										class="flex flex-col sm:flex-row flex-wrap gap-2 mb-2"
@@ -1161,7 +1308,7 @@
 													d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
 												/>
 											</svg>
-											Plantilla profesional (ESP)
+											Professional template (ES)
 										</button>
 										<button
 											type="button"
@@ -1205,22 +1352,28 @@
 											</svg>
 											{{
 												quoteAiGenerating
-													? "Generando…"
-													: "Generar texto con IA"
+													? "Generating…"
+													: "Generate with AI"
 											}}
 										</button>
 									</div>
 									<textarea
 										v-model="quoteForm.details"
 										rows="6"
-										placeholder="Según requerimientos recibidos… importe, alcance, plazos. Use los botones de arriba para empezar con una redacción profesional."
+										placeholder="Scope, amount, timelines based on the request. Use the buttons above to start from a professional draft."
 										class="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0D65AE] focus:border-transparent text-sm transition-all resize-y min-h-[120px]"
 									/>
 								</div>
 								<button
 									@click="submitQuote"
 									:disabled="
-										submittingQuote || !quoteForm.totalPrice
+										submittingQuote ||
+										!quoteForm.totalPrice ||
+										!canSendQuoteForSelection ||
+										(quoteSendNeedsFollowUpContext(
+											selectedRequest,
+										) &&
+											!quoteSendContext)
 									"
 									class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-[#0D65AE] rounded-lg hover:bg-[#0D65AE]/90 focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
 								>
@@ -1577,6 +1730,7 @@ import {
 	updateMyCompanyServiceRequestStatus,
 } from "@/api/companies.api";
 import { isQuotePricingRequest } from "@/utils/serviceRequestDisplay";
+import { formatCurrency as formatCurrencyUtil } from "@/utils/formatters";
 
 // ─── Composables ──────────────────────────────────────────────────────────────
 const router = useRouter();
@@ -1614,6 +1768,8 @@ const selectedRequest = ref(null);
 // Quote form
 const quoteForm = ref({ totalPrice: "", details: "" });
 const submittingQuote = ref(false);
+/** After a rejection: { parentQuoteUuid, proposalType: 'counter_proposal' | 'revised_offer' } */
+const quoteSendContext = ref(null);
 
 // Status update
 const newStatus = ref("");
@@ -1629,6 +1785,124 @@ function requestAssignmentsList(req) {
 	const arr = Array.isArray(req.assignments) ? req.assignments : [];
 	if (arr.length) return arr;
 	return req.assignment ? [req.assignment] : [];
+}
+
+function quoteRowAmount(quote) {
+	const n = Number(
+		quote?.totalPrice ?? quote?.total_price ?? quote?.amount ?? 0,
+	);
+	return Number.isFinite(n) ? n : 0;
+}
+
+function formatQuoteCurrency(amount) {
+	return formatCurrencyUtil(amount, "EUR", "es-ES");
+}
+
+/** Matches API: pending/quoted, no accepted quote, no quote awaiting customer. */
+const canSendQuoteForSelection = computed(() => {
+	const r = selectedRequest.value;
+	if (!r || !canManageServices.value || !isQuotePricingRequest(r)) {
+		return false;
+	}
+	if (!["pending", "quoted"].includes(r.status)) {
+		return false;
+	}
+	const quotes = Array.isArray(r.quotes) ? r.quotes : [];
+	const norm = (s) => (s || "").toString().toLowerCase();
+	if (quotes.some((q) => norm(q.status) === "accepted")) {
+		return false;
+	}
+	if (quotes.some((q) => norm(q.status) === "pending")) {
+		return false;
+	}
+	return true;
+});
+
+const sendQuoteBlockedReason = computed(() => {
+	const r = selectedRequest.value;
+	if (!r || !canManageServices.value || !isQuotePricingRequest(r)) {
+		return "";
+	}
+	if (!["pending", "quoted"].includes(r.status)) {
+		return "";
+	}
+	const quotes = Array.isArray(r.quotes) ? r.quotes : [];
+	const norm = (s) => (s || "").toString().toLowerCase();
+	if (quotes.some((q) => norm(q.status) === "pending")) {
+		return "A quote is still awaiting the customer's response. You can send another after they accept or reject it.";
+	}
+	if (quotes.some((q) => norm(q.status) === "accepted")) {
+		return "This request already has an accepted quote.";
+	}
+	return "";
+});
+
+function requestRejectedQuotes(req) {
+	if (!req || !Array.isArray(req.quotes)) return [];
+	return req.quotes.filter(
+		(q) => (q.status || "").toString().toLowerCase() === "rejected",
+	);
+}
+
+function quoteSendNeedsFollowUpContext(req) {
+	return requestRejectedQuotes(req).length > 0;
+}
+
+function setQuoteFollowUp(quote, proposalType) {
+	const u = quote?.uuid || quote?.id;
+	if (!u) return;
+	quoteSendContext.value = {
+		parentQuoteUuid: u,
+		proposalType,
+	};
+}
+
+function clearQuoteFollowUp() {
+	quoteSendContext.value = null;
+}
+
+function quoteProposalLabel(quote) {
+	const t = (quote?.proposalType || quote?.proposal_type || "initial")
+		.toString()
+		.toLowerCase();
+	if (t === "counter_proposal") return "Counter-proposal";
+	if (t === "revised_offer") return "Revised offer";
+	return null;
+}
+
+function quoteDetailsPreview(quote) {
+	const d = quote?.details;
+	if (d == null) return "";
+	if (typeof d === "string") return d;
+	try {
+		return JSON.stringify(d, null, 2);
+	} catch {
+		return String(d);
+	}
+}
+
+function activityEntryTitle(entry) {
+	const t = (entry?.type || "").toString();
+	if (t === "quote_sent") {
+		const pt = (entry.proposalType || "").toString();
+		if (pt === "counter_proposal") return "Quote — counter-proposal";
+		if (pt === "revised_offer") return "Quote — revised offer";
+		return "Quote sent";
+	}
+	if (t === "quote_rejected") return "Customer rejected quote";
+	return "";
+}
+
+function activityEntryMetaLine(entry) {
+	const parts = [];
+	const t = (entry?.type || "").toString();
+	if (t === "quote_sent" && entry.totalPrice != null) {
+		parts.push(formatQuoteCurrency(Number(entry.totalPrice)));
+	}
+	if (entry.parentQuoteUuid) {
+		parts.push(`Prior quote: ${entry.parentQuoteUuid.slice(0, 8)}…`);
+	}
+	return parts.join(" · ");
 }
 
 function formatAssigneesLine(req, truncate = true) {
@@ -1849,6 +2123,7 @@ const openModal = (request) => {
 	statusChangeComment.value = "";
 	// Reset forms
 	quoteForm.value = { totalPrice: "", details: "" };
+	quoteSendContext.value = null;
 	selectedAssigneeIds.value = [];
 };
 
@@ -1860,6 +2135,7 @@ const closeModal = () => {
 		newStatus.value = "";
 		statusChangeComment.value = "";
 		quoteForm.value = { totalPrice: "", details: "" };
+		quoteSendContext.value = null;
 		selectedAssigneeIds.value = [];
 	}, 200);
 };
@@ -1873,7 +2149,7 @@ function fillQuoteTemplateEsp() {
 		quoteForm.value.totalPrice,
 	);
 	showSuccess(
-		"Plantilla en español insertada. Ajuste el importe o el texto y envíe la cotización.",
+		"Spanish template inserted. Adjust the amount or text, then send the quote.",
 	);
 }
 
@@ -1899,37 +2175,52 @@ const submitQuote = async () => {
 		return;
 	}
 
+	const req = selectedRequest.value;
+	if (
+		quoteSendNeedsFollowUpContext(req) &&
+		canSendQuoteForSelection.value &&
+		!quoteSendContext.value
+	) {
+		showError(
+			"There are rejected quotes: use Counter-proposal or Revised offer (second chance) on the rejected quote row before sending.",
+		);
+		return;
+	}
+
 	submittingQuote.value = true;
 	try {
 		const payload = {
 			totalPrice: Number(quoteForm.value.totalPrice),
 			details: quoteForm.value.details || undefined,
 		};
-		const requestId =
-			selectedRequest.value.uuid || selectedRequest.value.id;
-		const res = await createMyCompanyQuote(requestId, payload);
-
-		showSuccess("Quote sent successfully!");
-
-		// Patch the local request with the returned data / push quote into array
-		const returned = res?.data || res;
-		if (returned) {
-			const idx = requests.value.findIndex(
-				(r) => (r.uuid || r.id) === requestId,
-			);
-			const merged = {
-				...selectedRequest.value,
-				status: returned.status || "quoted",
-				quotes: [
-					...(selectedRequest.value.quotes || []),
-					returned.quote || returned,
-				],
-			};
-			if (idx !== -1) requests.value[idx] = merged;
-			selectedRequest.value = merged;
+		if (quoteSendContext.value) {
+			payload.proposalType = quoteSendContext.value.proposalType;
+			payload.parentQuoteUuid = quoteSendContext.value.parentQuoteUuid;
 		}
+		const requestId = req.uuid || req.id;
+		await createMyCompanyQuote(requestId, payload);
+
+		showSuccess("Quote sent successfully.");
 
 		quoteForm.value = { totalPrice: "", details: "" };
+		quoteSendContext.value = null;
+
+		await loadRequests();
+		const refreshed = requests.value.find(
+			(r) => (r.uuid || r.id) === requestId,
+		);
+		if (refreshed && showModal.value) {
+			const list = requestAssignmentsList(refreshed);
+			selectedRequest.value = {
+				...refreshed,
+				assignments: [...list],
+				assignment: list[0] || null,
+				companyActivityLog: Array.isArray(refreshed.companyActivityLog)
+					? refreshed.companyActivityLog
+					: [],
+			};
+			newStatus.value = refreshed.status || "";
+		}
 	} catch (err) {
 		showError(err.message || "Failed to send quote.");
 	} finally {
