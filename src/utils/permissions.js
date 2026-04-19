@@ -90,8 +90,44 @@ export const PERMISSIONS = {
 // ─── Role-based permission mapping (fallback only) ─────────────────────────────
 // This is used ONLY when the user object has no permissions[] from the API.
 // Keep these in sync with your backend roles as a safety net.
+/**
+ * API role names from surebox_api_sass seed (company_admin, etc.) that are not
+ * in ROLES above — used only for ROLE_PERMISSIONS fallback.
+ */
 export const ROLE_PERMISSIONS = {
 	[ROLES.SUPER_ADMIN]: ['*'],
+
+	// Platform / company API roles (seed_rbac_and_demo_data.js)
+	company_admin: [
+		PERMISSIONS.COMPANY_CREATE,
+		PERMISSIONS.COMPANY_VIEW,
+		PERMISSIONS.COMPANY_EDIT,
+		PERMISSIONS.COMPANY_DELETE,
+		PERMISSIONS.COMPANY_MANAGE_MEMBERS,
+		PERMISSIONS.COMPANY_MANAGE_LOCATIONS,
+		PERMISSIONS.COMPANY_MANAGE_CATEGORIES,
+		PERMISSIONS.COMPANY_VIEW_MEMBERS,
+		PERMISSIONS.SERVICE_CREATE,
+		PERMISSIONS.SERVICE_VIEW,
+		PERMISSIONS.SERVICE_EDIT,
+		PERMISSIONS.SERVICE_DELETE,
+		PERMISSIONS.SERVICE_MANAGE,
+		PERMISSIONS.REQUEST_VIEW_ALL,
+		PERMISSIONS.REQUEST_EDIT,
+		PERMISSIONS.REQUEST_ASSIGN,
+		PERMISSIONS.REQUEST_UPDATE_STATUS,
+		PERMISSIONS.QUOTE_CREATE,
+		PERMISSIONS.QUOTE_VIEW,
+		PERMISSIONS.ASSIGNMENT_CREATE,
+		PERMISSIONS.ASSIGNMENT_VIEW,
+		PERMISSIONS.ASSIGNMENT_UPDATE,
+		PERMISSIONS.TRACKING_VIEW,
+		PERMISSIONS.NFC_MANAGE,
+		PERMISSIONS.NFC_VIEW,
+		PERMISSIONS.NFC_CREATE,
+		PERMISSIONS.NFC_EDIT,
+		PERMISSIONS.NFC_DELETE,
+	],
 
 	[ROLES.OWNER]: [
 		PERMISSIONS.COMPANY_VIEW,
@@ -216,6 +252,18 @@ export const ROLE_PERMISSIONS = {
 	],
 };
 
+/** Roles that always manage their own NFC tags (aligned with API seed roles). */
+const ROLES_WITH_OWN_NFC_ACCESS = new Set([
+	ROLES.CUSTOMER,
+	ROLES.EMPLOYEE,
+	ROLES.MEMBER,
+	ROLES.MANAGER,
+	ROLES.OWNER,
+	ROLES.ADMIN,
+	'company_admin',
+	'admin',
+]);
+
 // ─── Core permission checker ───────────────────────────────────────────────────
 
 /**
@@ -223,8 +271,9 @@ export const ROLE_PERMISSIONS = {
  *
  * Flow:
  *   1. Super-admin role → always granted.
- *   2. user.permissions[] present (API-driven) → direct name match only.
- *      If the permission is not in the list it is DENIED (no silent fallback).
+ *   2. user.permissions[] present (API-driven) → direct name match, plus
+ *      `manage_*` wildcard; NFC keys also allowed for customer/employee/company
+ *      roles when the API list omits explicit *_nfc rows (see ROLES_WITH_OWN_NFC_ACCESS).
  *   3. No permissions[] (old cached session) → role-based ROLE_PERMISSIONS map.
  *
  * @param {Object}  user       - User object from the store (has roles[] and/or permissions[])
@@ -269,6 +318,24 @@ export const hasPermission = (user, permission, context = {}) => {
 			if (context.requireOwnership) {
 				return user.id === context.resourceOwnerId;
 			}
+			return true;
+		}
+
+		// Own NFC tags: list/create/edit API routes are scoped to the current user.
+		// Older DB seeds omitted explicit *_nfc rows while still assigning customer /
+		// employee / company_admin — grant NFC UI checks from role so the router
+		// matches product policy without requiring a DB migration for every env.
+		const nfcKeys = new Set([
+			PERMISSIONS.NFC_VIEW,
+			PERMISSIONS.NFC_CREATE,
+			PERMISSIONS.NFC_EDIT,
+			PERMISSIONS.NFC_DELETE,
+			PERMISSIONS.NFC_MANAGE,
+		]);
+		if (
+			nfcKeys.has(permission) &&
+			userRoles.some((r) => ROLES_WITH_OWN_NFC_ACCESS.has(getRoleName(r)))
+		) {
 			return true;
 		}
 

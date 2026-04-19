@@ -247,18 +247,15 @@
 								v-model="phone"
 								label="Phone Number"
 								placeholder="04XX XXX XXX"
-								helper-text="Enter Australian mobile number"
 								:required="true"
-								:show-examples="true"
-								:show-success-message="true"
+								:show-examples="false"
+								:show-success-message="false"
 								:auto-format="true"
-								@valid="phoneValid = true"
-								@invalid="phoneValid = false"
 							/>
 						</div>
 					</div>
 
-					<Divider />
+					<div class="border-t border-gray-200"></div>
 
 					<!-- Location Information -->
 					<div class="space-y-4">
@@ -287,71 +284,15 @@
 							Location Information
 						</h3>
 						<div class="space-y-6">
-							<!-- Address Input -->
-							<div class="space-y-3">
-								<label
-									class="block text-sm font-medium text-gray-700"
-									>Address *</label
-								>
-								<div class="relative">
-									<input
-										v-model="address"
-										type="text"
-										placeholder="Start typing an address..."
-										class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0D65AE] focus:border-[#0D65AE] outline-none transition-all"
-										autocomplete="off"
-										required
-										@focus="showSuggestions = true"
-										@blur="hideSuggestions"
-									/>
-									<div
-										v-if="
-											showSuggestions &&
-											addressSuggestions.length
-										"
-										class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg overflow-hidden max-h-48 overflow-y-auto"
-									>
-										<div
-											v-for="suggestion in addressSuggestions"
-											:key="suggestion.formattedAddress"
-											@mousedown.prevent="
-												selectAddress(suggestion)
-											"
-											class="p-3 cursor-pointer hover:bg-gray-50 border-b last:border-b-0 transition-colors"
-										>
-											<div
-												class="flex items-center gap-2"
-											>
-												<svg
-													class="w-4 h-4 text-gray-400"
-													fill="none"
-													stroke="currentColor"
-													viewBox="0 0 24 24"
-												>
-													<path
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														stroke-width="2"
-														d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-													></path>
-													<path
-														stroke-linecap="round"
-														stroke-linejoin="round"
-														stroke-width="2"
-														d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-													></path>
-												</svg>
-												<span
-													class="text-sm text-gray-700"
-													>{{
-														suggestion.formattedAddress
-													}}</span
-												>
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
+							<RadarAddressField
+								v-model="address"
+								label="Address"
+								label-class="block text-sm font-medium text-gray-700 mb-2"
+								placeholder="Start typing an address…"
+								:required="true"
+								:limit="6"
+								@select="onRadarAddressSelect"
+							/>
 
 							<!-- Geolocation -->
 							<div class="space-y-3">
@@ -470,9 +411,8 @@
 						<div class="space-y-4">
 							<button
 								type="button"
-								@click="startCamera"
-								:disabled="showCamera"
-								class="inline-flex items-center gap-2 px-4 py-2 text-[#0D65AE] bg-white border border-[#0D65AE]/20 rounded-lg hover:bg-[#0D65AE]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								@click="cameraModalOpen = true"
+								class="inline-flex items-center gap-2 px-4 py-2 text-[#0D65AE] bg-white border border-[#0D65AE]/20 rounded-lg hover:bg-[#0D65AE]/5 transition-colors"
 							>
 								<svg
 									class="w-5 h-5"
@@ -493,57 +433,19 @@
 										d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
 									></path>
 								</svg>
-								Activate Camera
+								Take photos
 							</button>
+							<p class="text-xs text-gray-500">
+								Opens the camera in a window. You can take several shots;
+								photos are added when you confirm. Gallery upload is not
+								available.
+							</p>
 
-							<!-- Camera View -->
-							<div
-								v-if="showCamera"
-								class="bg-gray-900 rounded-lg border border-gray-700 p-4 space-y-4"
-							>
-								<video
-									ref="videoElement"
-									class="w-full max-h-80 rounded-lg"
-									autoplay
-									playsinline
-								></video>
-								<div class="flex gap-2 justify-center">
-									<button
-										type="button"
-										@click="takePhoto"
-										class="inline-flex items-center gap-2 px-4 py-2 text-white bg-[#0D65AE] rounded-lg hover:bg-[#0D65AE]/90 transition-colors border border-[#0D65AE]"
-									>
-										<svg
-											class="w-5 h-5"
-											fill="currentColor"
-											viewBox="0 0 20 20"
-										>
-											<circle cx="10" cy="10" r="8" />
-										</svg>
-										Take Photo
-									</button>
-									<button
-										type="button"
-										@click="stopCamera"
-										class="inline-flex items-center gap-2 px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors border border-red-600"
-									>
-										<svg
-											class="w-5 h-5"
-											fill="none"
-											stroke="currentColor"
-											viewBox="0 0 24 24"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M6 18L18 6M6 6l12 12"
-											></path>
-										</svg>
-										Close Camera
-									</button>
-								</div>
-							</div>
+							<CameraCaptureModal
+								v-model="cameraModalOpen"
+								:max-photos="12"
+								@confirm="onCameraConfirm"
+							/>
 
 							<!-- Image Gallery -->
 							<div v-if="images.length" class="space-y-3">
@@ -725,11 +627,14 @@ import "leaflet/dist/leaflet.css";
 import { isValidPhoneNumber } from "libphonenumber-js";
 import { useNfc, useToast, usePermissions } from "@/composables";
 import { useNfcReader } from "@/composables/useNfcReader";
-import PhoneInput from "@/components/PhoneInput.vue";
+import PhoneInput from "@/components/common/PhoneInput.vue";
+import RadarAddressField from "@/components/common/RadarAddressField.vue";
+import CameraCaptureModal from "@/components/CameraCaptureModal.vue";
 
 const router = useRouter();
 const { createNfcCode } = useNfc();
 const submitting = ref(false);
+const error = ref("");
 const { showSuccess, showError, showWarning, showInfo, showToast } = useToast();
 const { canCreateNfc } = usePermissions();
 const {
@@ -740,7 +645,6 @@ const {
 	showNFCInfo,
 } = useNfcReader();
 
-const RADAR_API_KEY = import.meta.env.VITE_RADAR_API_KEY;
 const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dtcwghtqp/image/upload";
 const CLOUDINARY_UPLOAD_PRESET = "ml_default";
 
@@ -753,72 +657,59 @@ const images = ref([]);
 const description = ref("");
 
 // UI states
-const showCamera = ref(false);
-const showSuggestions = ref(false);
+const cameraModalOpen = ref(false);
 const showMap = ref(false);
 const loadingLocation = ref(false);
-const phoneValid = ref(true);
+const phoneValid = ref(false);
 
-// Address suggestions
-const addressSuggestions = ref([]);
-
-// Camera and map refs
-const videoStream = ref(null);
-const videoElement = ref(null);
+// Map refs
 const mapContainer = ref(null);
 const map = ref(null);
 const lat = ref("");
 const lng = ref("");
 
-// Phone validation watcher
-watch(phone, (newVal) => {
-	phoneValid.value = isValidAustralianPhone(newVal);
-});
-
-// Address autocomplete watcher
-watch(address, async (newVal) => {
-	if (newVal.length > 2) {
-		try {
-			const res = await fetch(
-				`https://api.radar.io/v1/search/autocomplete?query=${encodeURIComponent(newVal)}`,
-				{
-					headers: { Authorization: RADAR_API_KEY },
-				},
-			);
-			if (res.ok) {
-				const data = await res.json();
-				addressSuggestions.value = data.addresses || [];
-				showSuggestions.value = true;
-			} else {
-				addressSuggestions.value = [];
-				showSuggestions.value = false;
-			}
-		} catch {
-			addressSuggestions.value = [];
-			showSuggestions.value = false;
+// Keep in sync with PhoneInput's E.164 model (single source for submit checks)
+watch(
+	phone,
+	(newVal) => {
+		const v = (newVal || "").trim();
+		if (!v) {
+			phoneValid.value = false;
+			return;
 		}
-	} else {
-		addressSuggestions.value = [];
-		showSuggestions.value = false;
-	}
-});
+		try {
+			phoneValid.value = isValidPhoneNumber(v);
+		} catch {
+			phoneValid.value = false;
+		}
+	},
+	{ immediate: true },
+);
 
-function selectAddress(suggestion) {
-	address.value = suggestion.formattedAddress;
-	geolocation.value = `${suggestion.latitude},${suggestion.longitude}`;
-	lat.value = suggestion.latitude;
-	lng.value = suggestion.longitude;
-	showSuggestions.value = false;
-	showMap.value = true;
-	initializeMap();
+function onRadarAddressSelect(suggestion) {
+	const la = suggestion.latitude ?? suggestion.lat;
+	const lo = suggestion.longitude ?? suggestion.lng;
+	address.value =
+		suggestion.formattedAddress ||
+		suggestion.addressLabel ||
+		address.value;
+	if (la != null && lo != null) {
+		lat.value = la;
+		lng.value = lo;
+		geolocation.value = `${la},${lo}`;
+		showMap.value = true;
+		initializeMap();
+	}
 }
 
 function initializeMap() {
 	nextTick(() => {
 		if (mapContainer.value && lat.value && lng.value) {
-			// Clear existing map
+			// Clear existing map (close popup first — avoids Leaflet zoom errors)
 			if (map.value) {
+				map.value.closePopup();
 				map.value.remove();
+				map.value = null;
 			}
 
 			map.value = L.map(mapContainer.value).setView(
@@ -832,8 +723,7 @@ function initializeMap() {
 
 			L.marker([lat.value, lng.value])
 				.addTo(map.value)
-				.bindPopup("📍 Selected location")
-				.openPopup();
+				.bindPopup("📍 Selected location");
 		}
 	});
 }
@@ -876,39 +766,6 @@ async function getCurrentLocation() {
 	);
 }
 
-async function startCamera() {
-	showCamera.value = true;
-	try {
-		videoStream.value = await navigator.mediaDevices.getUserMedia({
-			video: { facingMode: "environment" },
-		});
-		if (videoElement.value) {
-			videoElement.value.srcObject = videoStream.value;
-			videoElement.value.play();
-		}
-		showToast(
-			"info",
-			"Camera Ready",
-			"Camera activated. Position and take photos.",
-		);
-	} catch (err) {
-		showToast(
-			"error",
-			"Camera Error",
-			"Could not access camera. Please check permissions.",
-		);
-		showCamera.value = false;
-	}
-}
-
-function stopCamera() {
-	if (videoStream.value) {
-		videoStream.value.getTracks().forEach((track) => track.stop());
-		videoStream.value = null;
-	}
-	showCamera.value = false;
-}
-
 async function uploadToCloudinary(imageData) {
 	try {
 		const formData = new FormData();
@@ -935,28 +792,30 @@ async function uploadToCloudinary(imageData) {
 	}
 }
 
-async function takePhoto() {
-	if (!videoElement.value) return;
-
-	const canvas = document.createElement("canvas");
-	canvas.width = videoElement.value.videoWidth;
-	canvas.height = videoElement.value.videoHeight;
-
-	const ctx = canvas.getContext("2d");
-	ctx.drawImage(videoElement.value, 0, 0, canvas.width, canvas.height);
-
-	const imageData = canvas.toDataURL("image/png");
-
-	showToast("info", "Uploading...", "Please wait while we upload your image");
-
-	const url = await uploadToCloudinary(imageData);
-
-	if (url) {
-		images.value.push({ url });
+async function onCameraConfirm(dataUrls) {
+	if (!Array.isArray(dataUrls) || !dataUrls.length) return;
+	showToast("info", "Uploading…", "Uploading your photos…");
+	let added = 0;
+	for (const dataUrl of dataUrls) {
+		const url = await uploadToCloudinary(dataUrl);
+		if (url) {
+			images.value.push({ url });
+			added += 1;
+		}
+	}
+	if (added) {
 		showToast(
 			"success",
-			"Photo Added",
-			"Image uploaded and added successfully",
+			"Photos added",
+			added === 1
+				? "1 photo was added to your box."
+				: `${added} photos were added to your box.`,
+		);
+	} else {
+		showToast(
+			"error",
+			"Upload failed",
+			"Could not upload the photos. Try again.",
 		);
 	}
 }
@@ -976,38 +835,55 @@ async function handleSubmit(e) {
 	// Guard against double submission
 	if (submitting.value) return;
 
+	error.value = "";
+
 	// Validation
 	if (!codebox_id.value.trim()) {
 		showToast("warn", "Validation Error", "Box ID is required");
 		return;
 	}
 
-	if (phone.value && !phoneValid.value) {
+	if (!phone.value?.trim()) {
+		showToast("warn", "Validation Error", "Phone number is required");
+		return;
+	}
+
+	if (!phoneValid.value) {
 		showToast(
 			"warn",
 			"Invalid Phone",
-			"Please enter a valid Australian phone number",
+			"Please enter a valid phone number for the selected country",
 		);
 		return;
 	}
 
-	// Build payload
+	const coords = geolocation.value
+		? parseCoordinates(geolocation.value)
+		: null;
+	const imageUrls = images.value.map((img) => img.url).filter(Boolean);
+
 	const payload = {
-		code: codebox_id.value,
-		name: phone.value || undefined,
-		location: address.value || undefined,
-		coordinates: geolocation.value
-			? parseCoordinates(geolocation.value)
-			: undefined,
-		images: images.value.map((img) => img.url),
-		description: description.value || undefined,
+		code: codebox_id.value.trim(),
+		nickname: phone.value?.trim() || undefined,
+		address: address.value?.trim() || undefined,
+		lat:
+			coords != null && !Number.isNaN(coords.latitude)
+				? coords.latitude
+				: undefined,
+		lng:
+			coords != null && !Number.isNaN(coords.longitude)
+				? coords.longitude
+				: undefined,
+		photo: imageUrls[0] || undefined,
+		photos: imageUrls,
+		description: description.value?.trim() || undefined,
 	};
 
 	submitting.value = true;
 	try {
-		const success = await createNfcCode(payload);
+		const result = await createNfcCode(payload);
 
-		if (success) {
+		if (result?.success) {
 			showToast(
 				"success",
 				"Box Created",
@@ -1016,6 +892,9 @@ async function handleSubmit(e) {
 			setTimeout(() => {
 				router.push("/mybox");
 			}, 1500);
+		} else {
+			error.value =
+				result?.error || "Could not register the box. Please try again.";
 		}
 	} finally {
 		submitting.value = false;
@@ -1083,10 +962,9 @@ onMounted(() => {
 // Clean up on unmount
 onBeforeUnmount(() => {
 	if (map.value) {
+		map.value.closePopup();
 		map.value.remove();
-	}
-	if (videoStream.value) {
-		stopCamera();
+		map.value = null;
 	}
 });
 </script>

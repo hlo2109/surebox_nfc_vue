@@ -1,4 +1,4 @@
-<!-- AddressAutocomplete is used for the address field in Add/Edit dialogs -->
+<!-- RadarAddressField + PhoneInput: shared NFC-style inputs -->
 <template>
 	<div class="locations-list">
 		<!-- Header -->
@@ -69,134 +69,161 @@
 			<p class="text-gray-600">Add your first location to get started</p>
 		</div>
 
-		<!-- Locations Grid -->
-		<div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-			<div
-				v-for="location in locations"
-				:key="location.uuid"
-				class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
-			>
-				<!-- Location Header -->
-				<div class="flex items-start justify-between mb-3">
-					<div class="flex-1">
-						<h4 class="text-base font-medium text-gray-900 mb-1">
-							{{ location.name }}
-						</h4>
-						<div class="space-y-1">
-							<p
-								v-if="location.address"
-								class="text-sm text-gray-600 flex items-start gap-2"
-							>
-								<i
-									class="pi pi-map-marker text-gray-400 mt-0.5"
-								></i>
-								<span>{{ location.address }}</span>
-							</p>
-							<p
-								v-if="location.city || location.country"
-								class="text-sm text-gray-600 ml-6"
+		<!-- Locations table -->
+		<div v-else class="overflow-x-auto rounded-lg border border-gray-200">
+			<table class="min-w-full divide-y divide-gray-200 text-sm">
+				<thead class="bg-gray-50">
+					<tr>
+						<th
+							scope="col"
+							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600"
+						>
+							Name
+						</th>
+						<th
+							scope="col"
+							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600"
+						>
+							Address
+						</th>
+						<th
+							scope="col"
+							class="hidden sm:table-cell px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600"
+						>
+							City / Country
+						</th>
+						<th
+							scope="col"
+							class="hidden md:table-cell px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600"
+						>
+							Phone
+						</th>
+						<th
+							scope="col"
+							class="hidden lg:table-cell px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600"
+						>
+							Coordinates
+						</th>
+						<th
+							scope="col"
+							class="hidden lg:table-cell px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600"
+						>
+							Added
+						</th>
+						<th
+							scope="col"
+							class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-600"
+						>
+							Actions
+						</th>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-gray-100 bg-white">
+					<tr
+						v-for="location in locations"
+						:key="location.uuid || location.id"
+						class="hover:bg-gray-50/80 transition-colors"
+					>
+						<td class="px-4 py-3 align-top">
+							<div class="font-medium text-gray-900">
+								{{ location.name }}
+							</div>
+							<div
+								class="sm:hidden mt-1 text-xs text-gray-500"
+								v-if="formatCityCountry(location)"
 							>
 								{{ formatCityCountry(location) }}
-							</p>
-						</div>
-					</div>
-
-					<!-- Actions -->
-					<div
-						v-if="canManageLocations"
-						class="flex items-center gap-1 ml-2"
-					>
-						<button
-							@click="startEditLocation(location)"
-							class="p-2 text-gray-600 hover:text-[#0D65AE] hover:bg-gray-100 rounded-lg transition-colors"
-							title="Edit location"
+							</div>
+						</td>
+						<td class="px-4 py-3 align-top text-gray-700 max-w-[220px] md:max-w-xs">
+							<span class="line-clamp-2">{{ location.address || "—" }}</span>
+						</td>
+						<td
+							class="hidden sm:table-cell px-4 py-3 align-top text-gray-600 whitespace-nowrap"
 						>
-							<svg
-								class="w-5 h-5"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+							{{ formatCityCountry(location) || "—" }}
+						</td>
+						<td class="hidden md:table-cell px-4 py-3 align-top text-gray-600">
+							{{ location.phone || "—" }}
+						</td>
+						<td class="hidden lg:table-cell px-4 py-3 align-top text-gray-500 font-mono text-xs">
+							<template v-if="hasCoordinates(location)">
+								{{ formatCoordinates(location) }}
+							</template>
+							<template v-else>—</template>
+						</td>
+						<td class="hidden lg:table-cell px-4 py-3 align-top text-gray-500 text-xs whitespace-nowrap">
+							{{
+								location.created_at
+									? formatDate(location.created_at)
+									: "—"
+							}}
+						</td>
+						<td class="px-4 py-3 align-top text-right whitespace-nowrap">
+							<div class="inline-flex flex-wrap items-center justify-end gap-1">
+								<Button
+									v-if="hasCoordinates(location)"
+									label="Map"
+									icon="pi pi-map"
+									class="p-button-sm p-button-text p-button-outlined hidden sm:inline-flex"
+									@click="handleViewMap(location)"
 								/>
-							</svg>
-						</button>
-						<button
-							@click="confirmDeleteLocation(location)"
-							class="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-							title="Delete location"
-						>
-							<svg
-								class="w-5 h-5"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-								/>
-							</svg>
-						</button>
-					</div>
-				</div>
-
-				<!-- Contact Info -->
-				<div
-					v-if="location.phone || location.email"
-					class="space-y-1 mb-3"
-				>
-					<p
-						v-if="location.phone"
-						class="text-sm text-gray-600 flex items-center gap-2"
-					>
-						<i class="pi pi-phone text-gray-400"></i>
-						<span>{{ location.phone }}</span>
-					</p>
-					<p
-						v-if="location.email"
-						class="text-sm text-gray-600 flex items-center gap-2"
-					>
-						<i class="pi pi-envelope text-gray-400"></i>
-						<span>{{ location.email }}</span>
-					</p>
-				</div>
-
-				<!-- Coordinates & Map Link -->
-				<div
-					v-if="hasCoordinates(location)"
-					class="pt-3 border-t border-gray-100"
-				>
-					<div class="flex items-center justify-between">
-						<div class="text-xs text-gray-500">
-							<i class="pi pi-compass mr-1"></i>
-							{{ formatCoordinates(location) }}
-						</div>
-						<Button
-							label="View Map"
-							icon="pi pi-map"
-							class="p-button-sm p-button-text p-button-outlined"
-							@click="handleViewMap(location)"
-						/>
-					</div>
-				</div>
-
-				<!-- Additional Info -->
-				<div
-					v-if="location.created_at"
-					class="mt-3 pt-3 border-t border-gray-100"
-				>
-					<p class="text-xs text-gray-500">
-						Added {{ formatDate(location.created_at) }}
-					</p>
-				</div>
-			</div>
+								<button
+									v-if="hasCoordinates(location)"
+									type="button"
+									class="sm:hidden p-2 text-gray-600 hover:text-[#0D65AE] hover:bg-gray-100 rounded-lg"
+									title="View map"
+									@click="handleViewMap(location)"
+								>
+									<i class="pi pi-map"></i>
+								</button>
+								<template v-if="canManageLocations">
+									<button
+										type="button"
+										@click="startEditLocation(location)"
+										class="p-2 text-gray-600 hover:text-[#0D65AE] hover:bg-gray-100 rounded-lg transition-colors"
+										title="Edit location"
+									>
+										<svg
+											class="w-5 h-5"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+											/>
+										</svg>
+									</button>
+									<button
+										type="button"
+										@click="confirmDeleteLocation(location)"
+										class="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+										title="Delete location"
+									>
+										<svg
+											class="w-5 h-5"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+											/>
+										</svg>
+									</button>
+								</template>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
 		</div>
 
 		<!-- Map Modal -->
@@ -282,13 +309,9 @@
 						/>
 					</div>
 					<div class="md:col-span-2">
-						<label
-							class="block text-sm font-semibold text-gray-900 mb-2"
-						>
-							Address *
-						</label>
-						<AddressAutocomplete
+						<RadarAddressField
 							v-model="addForm.address"
+							label="Address"
 							placeholder="Search for an address…"
 							:required="true"
 							:disabled="adding"
@@ -297,21 +320,22 @@
 					</div>
 					<div class="md:col-span-2">
 						<LocationSelector
+							ref="addLocationSelectorRef"
 							:disabled="adding"
 							@change="onAddLocationChange"
 						/>
 					</div>
-					<div>
-						<label
-							class="block text-sm font-semibold text-gray-900 mb-2"
-						>
-							Phone
-						</label>
-						<input
+					<div class="md:col-span-2">
+						<PhoneInput
 							v-model="addForm.phone"
-							type="tel"
-							placeholder="Phone number"
-							class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all text-sm"
+							label="Phone"
+							placeholder=""
+							:default-country="addPhoneDefaultCountry"
+							:disabled="adding"
+							:required="false"
+							:show-examples="false"
+							:show-success-message="false"
+							:auto-format="true"
 						/>
 					</div>
 					<div>
@@ -444,13 +468,9 @@
 						/>
 					</div>
 					<div class="md:col-span-2">
-						<label
-							class="block text-sm font-semibold text-gray-900 mb-2"
-						>
-							Address *
-						</label>
-						<AddressAutocomplete
+						<RadarAddressField
 							v-model="editForm.address"
+							label="Address"
 							placeholder="Search for an address…"
 							:required="true"
 							:disabled="editing"
@@ -459,6 +479,8 @@
 					</div>
 					<div class="md:col-span-2">
 						<LocationSelector
+							:key="'edit-loc-' + (locationToEdit?.uuid || 'x') + '-' + editLocationSessionKey"
+							ref="editLocationSelectorRef"
 							:initial-country-id="editForm.countryId"
 							:initial-department-id="editForm.departmentId"
 							:initial-city-id="editForm.cityId"
@@ -466,17 +488,17 @@
 							@change="onEditLocationChange"
 						/>
 					</div>
-					<div>
-						<label
-							class="block text-sm font-semibold text-gray-900 mb-2"
-						>
-							Phone
-						</label>
-						<input
+					<div class="md:col-span-2">
+						<PhoneInput
 							v-model="editForm.phone"
-							type="tel"
-							placeholder="Phone number"
-							class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-[#0D65AE] focus:ring-2 focus:ring-[#0D65AE] focus:ring-opacity-20 focus:outline-none transition-all text-sm"
+							label="Phone"
+							placeholder=""
+							:default-country="editPhoneDefaultCountry"
+							:disabled="editing"
+							:required="false"
+							:show-examples="false"
+							:show-success-message="false"
+							:auto-format="true"
 						/>
 					</div>
 					<div>
@@ -666,13 +688,20 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from "vue";
+import { isValidPhoneNumber } from "libphonenumber-js";
 import LocationSelector from "@/components/common/LocationSelector.vue";
-import AddressAutocomplete from "@/components/common/AddressAutocomplete.vue";
+import RadarAddressField from "@/components/common/RadarAddressField.vue";
+import PhoneInput from "@/components/common/PhoneInput.vue";
+import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import { useCompanies, useToast } from "@/composables";
 import { formatDate } from "@/utils/formatters";
 
-const { addMyCompanyLocation, deleteMyCompanyLocation } = useCompanies();
+const {
+	addMyCompanyLocation,
+	updateMyCompanyLocation,
+	deleteMyCompanyLocation,
+} = useCompanies();
 const { showToast } = useToast();
 
 const props = defineProps({
@@ -739,6 +768,13 @@ const editForm = ref({
 const locationToEdit = ref(null);
 const locationToDelete = ref(null);
 const selectedLocation = ref(null);
+const addLocationSelectorRef = ref(null);
+const editLocationSelectorRef = ref(null);
+/** ISO2 for PhoneInput default country (aligned with NFC CreateBox default). */
+const addPhoneDefaultCountry = ref("AU");
+const editPhoneDefaultCountry = ref("AU");
+/** Bumps so LocationSelector remounts every time Edit opens (same uuid re-open). */
+const editLocationSessionKey = ref(0);
 let mapInstance = null;
 
 // Computed
@@ -746,10 +782,77 @@ const locationsCount = computed(() => {
 	return props.locations.length;
 });
 
-// Methods
+// Methods — API / MySQL may use camelCase, snake_case, or lowercase keys
+const locationStr = (loc, ...names) => {
+	if (!loc) return "";
+	for (const name of names) {
+		const v = loc[name];
+		if (v != null && String(v).trim() !== "") return String(v).trim();
+	}
+	for (const name of names) {
+		const key = Object.keys(loc).find(
+			(k) => k.toLowerCase() === name.toLowerCase(),
+		);
+		if (key != null) {
+			const v = loc[key];
+			if (v != null && String(v).trim() !== "") return String(v).trim();
+		}
+	}
+	return "";
+};
+
+const locationNum = (loc, ...names) => {
+	if (!loc) return null;
+	for (const name of names) {
+		const v = loc[name];
+		const n = Number(v);
+		if (v !== undefined && v !== null && v !== "" && Number.isFinite(n)) {
+			return n;
+		}
+	}
+	for (const name of names) {
+		const key = Object.keys(loc).find(
+			(k) => k.toLowerCase() === name.toLowerCase(),
+		);
+		if (key != null) {
+			const n = Number(loc[key]);
+			if (Number.isFinite(n)) return n;
+		}
+	}
+	return null;
+};
+
 const formatCityCountry = (location) => {
-	const parts = [location.city, location.country].filter(Boolean);
-	return parts.join(", ");
+	const city = locationStr(
+		location,
+		"city",
+		"cityName",
+		"city_name",
+		"cityname",
+	);
+	const state = locationStr(
+		location,
+		"department",
+		"departmentName",
+		"department_name",
+		"departmentname",
+		"state",
+		"stateName",
+	);
+	const country = locationStr(
+		location,
+		"country",
+		"countryName",
+		"country_name",
+		"countryname",
+	);
+	if (city && state && country) {
+		return `${city}, ${state} — ${country}`;
+	}
+	if (city && country) {
+		return `${city} — ${country}`;
+	}
+	return [city, state, country].filter(Boolean).join(", ");
 };
 
 const hasCoordinates = (location) => {
@@ -769,6 +872,16 @@ const formatCoordinates = (location) => {
 const handleAddLocation = async () => {
 	if (!addForm.value.name || !addForm.value.address) {
 		showToast("error", "Validation Error", "Name and address are required");
+		return;
+	}
+
+	const phoneTrim = addForm.value.phone?.trim();
+	if (phoneTrim && !isValidPhoneNumber(phoneTrim)) {
+		showToast(
+			"error",
+			"Invalid phone",
+			"Please enter a valid phone number for the selected country.",
+		);
 		return;
 	}
 
@@ -802,36 +915,112 @@ const handleAddLocation = async () => {
 			lat: null,
 			lng: null,
 		};
+		addPhoneDefaultCountry.value = "AU";
 		emit("refresh");
 	}
 	adding.value = false;
 };
 
+const toNumericId = (v) => {
+	if (v === undefined || v === null || v === "") return null;
+	const n = Number(v);
+	return Number.isFinite(n) ? n : null;
+};
+
 const startEditLocation = (location) => {
 	locationToEdit.value = location;
 	editForm.value = {
-		name: location.name || "",
-		address: location.address || "",
-		city: location.city || "",
-		country: location.country || "",
-		phone: location.phone || "",
-		cityId: location.cityId || location.city_id || null,
-		countryId: location.countryId || location.country_id || null,
-		departmentId: location.departmentId || location.department_id || null,
-		lat: location.lat || null,
-		lng: location.lng || null,
+		name: locationStr(location, "name"),
+		address: locationStr(location, "address"),
+		city: locationStr(
+			location,
+			"city",
+			"cityName",
+			"city_name",
+			"cityname",
+		),
+		country: locationStr(
+			location,
+			"country",
+			"countryName",
+			"country_name",
+			"countryname",
+		),
+		phone: locationStr(location, "phone"),
+		cityId: locationNum(location, "cityId", "city_id", "cityid"),
+		countryId: locationNum(
+			location,
+			"countryId",
+			"country_id",
+			"countryid",
+		),
+		departmentId: locationNum(
+			location,
+			"departmentId",
+			"department_id",
+			"departmentid",
+		),
+		lat: location.lat != null ? Number(location.lat) : null,
+		lng: location.lng != null ? Number(location.lng) : null,
 	};
+	const iso = iso2FromCountryCode(
+		locationStr(location, "countryCode", "country_code", "countrycode"),
+	);
+	editPhoneDefaultCountry.value = iso || "AU";
+	editLocationSessionKey.value += 1;
 	showEditDialog.value = true;
 };
 
 const handleEditLocation = async () => {
-	showToast(
-		"error",
-		"Not Supported",
-		"Editing locations is not supported. Please delete this location and create a new one.",
-	);
-	showEditDialog.value = false;
-	locationToEdit.value = null;
+	if (!editForm.value.name || !editForm.value.address) {
+		showToast("error", "Validation Error", "Name and address are required");
+		return;
+	}
+
+	const phoneTrim = editForm.value.phone?.trim();
+	if (phoneTrim && !isValidPhoneNumber(phoneTrim)) {
+		showToast(
+			"error",
+			"Invalid phone",
+			"Please enter a valid phone number for the selected country.",
+		);
+		return;
+	}
+
+	const loc = locationToEdit.value;
+	const locationKey = loc?.uuid ?? loc?.id;
+	if (!locationKey) {
+		showToast("error", "Error", "Could not determine location to update.");
+		return;
+	}
+
+	const locationData = {
+		name: editForm.value.name,
+		address: editForm.value.address,
+		city: editForm.value.city || undefined,
+		country: editForm.value.country || undefined,
+		phone: editForm.value.phone || undefined,
+		cityId: editForm.value.cityId || undefined,
+		countryId: editForm.value.countryId || undefined,
+		departmentId: editForm.value.departmentId || undefined,
+		lat: editForm.value.lat ?? undefined,
+		lng: editForm.value.lng ?? undefined,
+	};
+
+	editing.value = true;
+	const result = await updateMyCompanyLocation(locationKey, locationData);
+	if (result.success) {
+		showEditDialog.value = false;
+		locationToEdit.value = null;
+		emit("refresh");
+	}
+	editing.value = false;
+};
+
+const iso2FromCountryCode = (code) => {
+	if (!code) return null;
+	const s = String(code).trim().toUpperCase();
+	return s.length >= 2 ? s.slice(0, 2) : null;
 };
 
 const onAddLocationChange = (location) => {
@@ -840,6 +1029,8 @@ const onAddLocationChange = (location) => {
 	addForm.value.departmentId = location.departmentId;
 	addForm.value.cityId = location.cityId;
 	addForm.value.city = location.cityName;
+	const iso = iso2FromCountryCode(location.countryCode);
+	if (iso) addPhoneDefaultCountry.value = iso;
 };
 
 const onEditLocationChange = (location) => {
@@ -848,24 +1039,40 @@ const onEditLocationChange = (location) => {
 	editForm.value.departmentId = location.departmentId;
 	editForm.value.cityId = location.cityId;
 	editForm.value.city = location.cityName;
+	const iso = iso2FromCountryCode(location.countryCode);
+	if (iso) editPhoneDefaultCountry.value = iso;
+};
+
+const applyRadarCoordsAndLabels = (targetForm, address) => {
+	const lat = address.latitude ?? address.lat;
+	const lng = address.longitude ?? address.lng;
+	if (lat != null && lat !== "") targetForm.lat = Number(lat);
+	if (lng != null && lng !== "") targetForm.lng = Number(lng);
+	if (address.country || address.countryName) {
+		targetForm.country = address.country || address.countryName;
+	}
+	if (address.city) {
+		targetForm.city = address.city;
+	}
 };
 
 /**
  * Called when the user picks an address suggestion in the Add dialog.
- * Auto-populates lat/lng from the Radar response.
+ * Fills coordinates and tries to align Country / Department / City from Radar.
  */
-const onAddAddressSelect = (address) => {
-	if (address.latitude != null) addForm.value.lat = address.latitude;
-	if (address.longitude != null) addForm.value.lng = address.longitude;
+const onAddAddressSelect = async (address) => {
+	applyRadarCoordsAndLabels(addForm.value, address);
+	await nextTick();
+	addLocationSelectorRef.value?.applyFromRadar?.(address);
 };
 
 /**
  * Called when the user picks an address suggestion in the Edit dialog.
- * Auto-populates lat/lng from the Radar response.
  */
-const onEditAddressSelect = (address) => {
-	if (address.latitude != null) editForm.value.lat = address.latitude;
-	if (address.longitude != null) editForm.value.lng = address.longitude;
+const onEditAddressSelect = async (address) => {
+	applyRadarCoordsAndLabels(editForm.value, address);
+	await nextTick();
+	editLocationSelectorRef.value?.applyFromRadar?.(address);
 };
 
 const confirmDeleteLocation = (location) => {
@@ -962,6 +1169,10 @@ watch(showMapModal, (newValue) => {
 		mapInstance = null;
 		selectedLocation.value = null;
 	}
+});
+
+watch(showAddDialog, (open) => {
+	if (open) addPhoneDefaultCountry.value = "AU";
 });
 </script>
 

@@ -633,7 +633,7 @@
 							@click.stop="
 								router.push({
 									name: 'RequestDetail',
-									params: { id: request.id },
+									params: { id: request.uuid },
 								})
 							"
 							class="inline-flex items-center gap-1 text-xs font-medium text-[#0D65AE] group-hover:gap-2 transition-all hover:underline"
@@ -1016,13 +1016,90 @@
 								<div>
 									<label
 										class="block text-sm font-medium text-gray-700 mb-1"
-										>Details / Notes</label
+										>Mensaje para el cliente (correo / presentación)</label
 									>
+									<p
+										class="text-xs text-gray-500 mb-2 leading-relaxed"
+									>
+										Redacción profesional en español para acompañar la
+										cotización. Puede usar la plantilla y luego refinar con
+										IA.
+									</p>
+									<div
+										class="flex flex-col sm:flex-row flex-wrap gap-2 mb-2"
+									>
+										<button
+											type="button"
+											@click="fillQuoteTemplateEsp"
+											class="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-800 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-1 transition-all"
+										>
+											<svg
+												class="w-4 h-4 text-[#0D65AE]"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+												/>
+											</svg>
+											Plantilla profesional (ESP)
+										</button>
+										<button
+											type="button"
+											@click="runQuoteAiEsp"
+											:disabled="quoteAiGenerating"
+											class="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-indigo-800 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 focus:ring-2 focus:ring-indigo-400 focus:ring-offset-1 disabled:opacity-60 transition-all"
+										>
+											<svg
+												v-if="quoteAiGenerating"
+												class="animate-spin w-4 h-4"
+												fill="none"
+												viewBox="0 0 24 24"
+											>
+												<circle
+													class="opacity-25"
+													cx="12"
+													cy="12"
+													r="10"
+													stroke="currentColor"
+													stroke-width="4"
+												/>
+												<path
+													class="opacity-75"
+													fill="currentColor"
+													d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+												/>
+											</svg>
+											<svg
+												v-else
+												class="w-4 h-4"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+												/>
+											</svg>
+											{{
+												quoteAiGenerating
+													? "Generando…"
+													: "Generar texto con IA"
+											}}
+										</button>
+									</div>
 									<textarea
 										v-model="quoteForm.details"
-										rows="4"
-										placeholder="Describe the quote details, materials included, timeline..."
-										class="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0D65AE] focus:border-transparent text-sm transition-all resize-none"
+										rows="6"
+										placeholder="Según requerimientos recibidos… importe, alcance, plazos. Use los botones de arriba para empezar con una redacción profesional."
+										class="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0D65AE] focus:border-transparent text-sm transition-all resize-y min-h-[120px]"
 									/>
 								</div>
 								<button
@@ -1339,6 +1416,8 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { usePermissions } from "@/composables/usePermissions";
 import { useToast } from "@/composables/useToast";
+import { useAuthStore } from "@/stores/auth.store";
+import { useQuoteAiAssist } from "@/composables/useQuoteAiAssist";
 import {
 	getMyCompanyServiceRequests,
 	getMyCompanyMembers,
@@ -1349,9 +1428,17 @@ import {
 
 // ─── Composables ──────────────────────────────────────────────────────────────
 const router = useRouter();
-const { showSuccess, showError } = useToast();
+const authStore = useAuthStore();
+const { showSuccess, showError, showInfo } = useToast();
 const { canManageServices, canManageMembers, canUpdateRequestStatus } =
 	usePermissions();
+const { quoteAiGenerating, applyTemplateEsp, composeWithAiEsp } =
+	useQuoteAiAssist();
+
+const companyDisplayName = computed(() => {
+	const c = authStore.state.user?.companies?.[0];
+	return c?.name || c?.company_name || "SureBox";
+});
 
 // ─── State ────────────────────────────────────────────────────────────────────
 const loading = ref(false);
@@ -1536,6 +1623,31 @@ const closeModal = () => {
 };
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
+function fillQuoteTemplateEsp() {
+	if (!selectedRequest.value) return;
+	quoteForm.value.details = applyTemplateEsp(
+		selectedRequest.value,
+		companyDisplayName.value,
+		quoteForm.value.totalPrice,
+	);
+	showSuccess(
+		"Plantilla en español insertada. Ajuste el importe o el texto y envíe la cotización.",
+	);
+}
+
+async function runQuoteAiEsp() {
+	if (!selectedRequest.value) return;
+	await composeWithAiEsp({
+		request: selectedRequest.value,
+		companyName: companyDisplayName.value,
+		totalPrice: quoteForm.value.totalPrice,
+		setDetails: (text) => {
+			quoteForm.value.details = text;
+		},
+		toast: { showSuccess, showError, showInfo },
+	});
+}
+
 const submitQuote = async () => {
 	if (!selectedRequest.value || !quoteForm.value.totalPrice) return;
 

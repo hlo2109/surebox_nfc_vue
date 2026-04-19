@@ -1,9 +1,11 @@
 import apiClient, { handleApiError } from './config';
+import { ApiMyEmployee, ApiServiceRequests } from '@/constants/apiRoutes';
 
 /**
- * Service Requests API Module
- * Handles customer-facing service request API calls
- * Audience: authenticated customers (own requests only)
+ * Service Requests API — cliente y empleado en campo.
+ *
+ * Cliente: ApiServiceRequests.*  →  GET/POST /service-requests, cancel, quotes, rate
+ * Empleado: ApiMyEmployee.*      →  assignments, accept/reject/start/complete, tracking, verify-nfc
  */
 
 /**
@@ -16,7 +18,7 @@ import apiClient, { handleApiError } from './config';
  */
 export const getServiceRequests = async (params = {}) => {
 	try {
-		const response = await apiClient.get('/service-requests', { params });
+		const response = await apiClient.get(ApiServiceRequests.LIST, { params });
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -30,7 +32,7 @@ export const getServiceRequests = async (params = {}) => {
  */
 export const getServiceRequest = async (requestId) => {
 	try {
-		const response = await apiClient.get(`/service-requests/${requestId}`);
+		const response = await apiClient.get(ApiServiceRequests.BY_ID(requestId));
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -49,7 +51,7 @@ export const getServiceRequest = async (requestId) => {
  */
 export const createServiceRequest = async (requestData) => {
 	try {
-		const response = await apiClient.post('/service-requests', requestData);
+		const response = await apiClient.post(ApiServiceRequests.LIST, requestData);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -64,7 +66,7 @@ export const createServiceRequest = async (requestData) => {
  */
 export const cancelServiceRequest = async (requestId) => {
 	try {
-		const response = await apiClient.put(`/service-requests/${requestId}/cancel`);
+		const response = await apiClient.put(ApiServiceRequests.CANCEL(requestId));
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -82,7 +84,7 @@ export const cancelServiceRequest = async (requestId) => {
 export const respondToQuote = async (requestId, quoteId, action) => {
 	try {
 		const response = await apiClient.put(
-			`/service-requests/${requestId}/quotes/${quoteId}/respond`,
+			ApiServiceRequests.QUOTE_RESPOND(requestId, quoteId),
 			{ action },
 		);
 		return response.data;
@@ -102,7 +104,7 @@ export const respondToQuote = async (requestId, quoteId, action) => {
  */
 export const rateServiceRequest = async (requestId, ratingData) => {
 	try {
-		const response = await apiClient.post(`/service-requests/${requestId}/rate`, ratingData);
+		const response = await apiClient.post(ApiServiceRequests.RATE(requestId), ratingData);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -121,7 +123,7 @@ export const rateServiceRequest = async (requestId, ratingData) => {
  */
 export const getMyAssignments = async (params = {}) => {
 	try {
-		const response = await apiClient.get('/my/employee/assignments', { params });
+		const response = await apiClient.get(ApiMyEmployee.ASSIGNMENTS, { params });
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -135,7 +137,7 @@ export const getMyAssignments = async (params = {}) => {
  */
 export const getMyAssignment = async (assignmentId) => {
 	try {
-		const response = await apiClient.get(`/my/employee/assignments/${assignmentId}`);
+		const response = await apiClient.get(ApiMyEmployee.ASSIGNMENT(assignmentId));
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -149,7 +151,7 @@ export const getMyAssignment = async (assignmentId) => {
  */
 export const acceptAssignment = async (assignmentId) => {
 	try {
-		const response = await apiClient.put(`/my/employee/assignments/${assignmentId}/accept`);
+		const response = await apiClient.put(ApiMyEmployee.ACCEPT(assignmentId));
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -164,7 +166,7 @@ export const acceptAssignment = async (assignmentId) => {
  */
 export const rejectAssignment = async (assignmentId, reason) => {
 	try {
-		const response = await apiClient.put(`/my/employee/assignments/${assignmentId}/reject`, { reason });
+		const response = await apiClient.put(ApiMyEmployee.REJECT(assignmentId), { reason });
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -182,7 +184,7 @@ export const rejectAssignment = async (assignmentId, reason) => {
  */
 export const verifyAssignmentNfc = async (assignmentId, nfcData) => {
 	try {
-		const response = await apiClient.post(`/my/employee/assignments/${assignmentId}/verify-nfc`, nfcData);
+		const response = await apiClient.post(ApiMyEmployee.VERIFY_NFC(assignmentId), nfcData);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -200,7 +202,7 @@ export const verifyAssignmentNfc = async (assignmentId, nfcData) => {
  */
 export const startAssignment = async (assignmentId, startData) => {
 	try {
-		const response = await apiClient.put(`/my/employee/assignments/${assignmentId}/start`, startData);
+		const response = await apiClient.put(ApiMyEmployee.START(assignmentId), startData);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -218,7 +220,7 @@ export const startAssignment = async (assignmentId, startData) => {
  */
 export const completeAssignment = async (assignmentId, completeData) => {
 	try {
-		const response = await apiClient.put(`/my/employee/assignments/${assignmentId}/complete`, completeData);
+		const response = await apiClient.put(ApiMyEmployee.COMPLETE(assignmentId), completeData);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -238,7 +240,7 @@ export const completeAssignment = async (assignmentId, completeData) => {
  */
 export const recordAssignmentTracking = async (assignmentId, trackingData) => {
 	try {
-		const response = await apiClient.post(`/my/employee/assignments/${assignmentId}/tracking`, trackingData);
+		const response = await apiClient.post(ApiMyEmployee.TRACKING(assignmentId), trackingData);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));

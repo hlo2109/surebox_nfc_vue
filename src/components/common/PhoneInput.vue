@@ -572,6 +572,15 @@ const selectedCountry = ref(
 	countries.find((c) => c.code === props.defaultCountry) || countries[0],
 );
 
+watch(
+	() => props.defaultCountry,
+	(code) => {
+		if (!code) return;
+		const next = countries.find((c) => c.code === code);
+		if (next) selectedCountry.value = next;
+	},
+);
+
 // Computed
 const filteredCountries = computed(() => {
 	const search = countrySearch.value.toLowerCase().trim();

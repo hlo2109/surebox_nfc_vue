@@ -144,11 +144,9 @@
 
 				</div>
 
-				<!-- ─── Recent Requests + Quick Actions ─────────────────────── -->
-				<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-
-					<!-- Recent Service Requests (left 2/3) -->
-					<div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
+				<!-- ─── Recent Service Requests ───────────────────────────────── -->
+				<div class="mb-6 sm:mb-8">
+					<div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
 						<div class="flex items-center justify-between mb-4 sm:mb-6">
 							<h3 class="text-lg sm:text-xl font-semibold text-gray-900">Recent Requests</h3>
 							<button
@@ -246,73 +244,6 @@
 									</p>
 								</div>
 							</div>
-						</div>
-					</div>
-
-					<!-- Quick Actions (right 1/3) -->
-					<div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
-						<h3 class="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">Quick Actions</h3>
-						<div class="space-y-3">
-
-							<!-- Primary: Register NFC Tag -->
-							<button
-								@click="router.push('/create-box')"
-								class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#0D65AE] text-white font-medium rounded-lg hover:bg-[#0D65AE]/90 focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 transition-all border border-[#0D65AE]"
-							>
-								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-								</svg>
-								<span>Register NFC Tag</span>
-							</button>
-
-							<!-- Outline: My NFC Tags -->
-							<button
-								@click="router.push('/mybox')"
-								class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white text-gray-700 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 transition-all"
-							>
-								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-										d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-								</svg>
-								<span>My NFC Tags</span>
-							</button>
-
-							<!-- Outline: My Requests -->
-							<button
-								@click="router.push('/requests')"
-								class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white text-gray-700 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 transition-all"
-							>
-								<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-										d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-								</svg>
-								<span>My Requests</span>
-							</button>
-
-							<!-- Divider -->
-							<div class="border-t border-gray-200 pt-4 mt-4"></div>
-
-							<!-- Need Help? card -->
-							<div class="bg-[#0D65AE]/5 p-4 rounded-lg border border-[#0D65AE]/20">
-								<div class="flex items-start gap-3">
-									<div class="bg-[#0D65AE] p-2 rounded-lg flex-shrink-0 border border-[#0D65AE]">
-										<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-												d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-										</svg>
-									</div>
-									<div class="flex-1">
-										<h4 class="font-semibold text-gray-900 text-sm mb-1">Need Help?</h4>
-										<p class="text-xs text-gray-600 mb-2">
-											Learn how to register NFC tags and manage service requests.
-										</p>
-										<button class="text-xs font-medium text-[#0D65AE] hover:underline transition-colors">
-											View Guide →
-										</button>
-									</div>
-								</div>
-							</div>
-
 						</div>
 					</div>
 

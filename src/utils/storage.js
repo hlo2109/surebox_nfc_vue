@@ -25,12 +25,20 @@ export const setItem = (key, value) => {
 /**
  * Get item from localStorage
  * @param {string} key - Storage key
- * @returns {any} Parsed value or null
+ * @returns {any} Parsed JSON value, raw string if not valid JSON, or null
  */
 export const getItem = (key) => {
 	try {
 		const item = localStorage.getItem(key);
-		return item ? JSON.parse(item) : null;
+		if (item === null || item === "") {
+			return null;
+		}
+		try {
+			return JSON.parse(item);
+		} catch {
+			// Tokens u otros valores guardados como texto plano (p. ej. JWT sin comillas)
+			return item;
+		}
 	} catch (error) {
 		console.error(`Error getting item ${key} from localStorage:`, error);
 		return null;

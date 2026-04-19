@@ -72,6 +72,7 @@
 					id="email"
 					type="email"
 					v-model="email"
+					autocomplete="username"
 					placeholder="name@company.com"
 					:disabled="loading"
 					required
@@ -92,6 +93,7 @@
 						id="password"
 						:type="showPassword ? 'text' : 'password'"
 						v-model="password"
+						autocomplete="current-password"
 						placeholder="Enter your password"
 						:disabled="loading"
 						required

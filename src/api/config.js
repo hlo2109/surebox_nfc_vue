@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getAccessToken, getRefreshToken, setAccessToken, clearAuth } from '@/utils/storage';
+import { ApiAuth } from '@/constants/apiRoutes';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -82,7 +83,7 @@ apiClient.interceptors.response.use(
 		const originalRequest = error.config;
 
 		// Skip token refresh for auth endpoints
-		const authEndpoints = ['/auth/login', '/auth/register', '/auth/refresh'];
+		const authEndpoints = [ApiAuth.LOGIN, ApiAuth.REGISTER, ApiAuth.REFRESH];
 		const isAuthEndpoint = authEndpoints.some(endpoint =>
 			originalRequest?.url?.includes(endpoint)
 		);
@@ -117,7 +118,7 @@ apiClient.interceptors.response.use(
 
 			try {
 				// Try to refresh the token
-				const response = await axios.post(`${BASE_URL}/auth/refresh`, {
+				const response = await axios.post(`${BASE_URL}${ApiAuth.REFRESH}`, {
 					refreshToken: refreshToken,
 				});
 

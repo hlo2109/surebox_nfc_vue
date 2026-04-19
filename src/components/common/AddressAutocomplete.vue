@@ -303,7 +303,18 @@ const selectSuggestion = (address) => {
 	const display = address.formattedAddress || address.addressLabel || "";
 	inputValue.value = display;
 	emit("update:modelValue", display);
-	emit("select", address);
+	/** Normalized payload so parents can rely on latitude/longitude and region fields. */
+	const normalized = {
+		...address,
+		latitude: address.latitude ?? address.lat ?? null,
+		longitude: address.longitude ?? address.lng ?? null,
+		state: address.state ?? address.county ?? null,
+		stateCode: address.stateCode ?? address.countyCode ?? null,
+		country: address.country ?? address.countryName ?? null,
+		countryCode: address.countryCode ?? null,
+		city: address.city ?? address.neighborhood ?? null,
+	};
+	emit("select", normalized);
 	close();
 };
 

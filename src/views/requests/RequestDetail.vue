@@ -1444,7 +1444,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useServiceRequests } from "@/composables/useServiceRequests";
 import {
@@ -1456,6 +1456,14 @@ import { formatCurrency, formatDate, formatDateTime } from "@/utils/formatters";
 
 const router = useRouter();
 const route = useRoute();
+
+/** Route passes `:id` with `props: true`; must declare because template has multiple roots (div + Teleport). */
+const props = defineProps({
+	id: {
+		type: String,
+		required: true,
+	},
+});
 
 const {
 	state,
@@ -1663,8 +1671,12 @@ const loadRequest = async () => {
 	isLoading.value = true;
 	error.value = null;
 	try {
-		const requestId = parseInt(route.params.id);
-		const result = await fetchServiceRequest(requestId);
+		const requestUuid = String(props.id ?? route.params.id ?? "").trim();
+		if (!requestUuid) {
+			error.value = "Missing service request id";
+			return;
+		}
+		const result = await fetchServiceRequest(requestUuid);
 
 		if (!result.success) {
 			error.value = result.error || "Failed to load request";
@@ -1695,9 +1707,9 @@ const confirmUpdateStatus = async () => {
 
 	isUpdating.value = true;
 	try {
-		const requestId =
-			currentRequest.value?.uuid || currentRequest.value?.id;
-		await cancelServiceRequest(requestId);
+		const requestUuid = currentRequest.value?.uuid;
+		if (!requestUuid) return;
+		await cancelServiceRequest(requestUuid);
 		showStatusDialog.value = false;
 		await loadRequest();
 	} catch (err) {
@@ -1709,10 +1721,10 @@ const confirmUpdateStatus = async () => {
 
 const handleAcceptQuote = async (quote) => {
 	try {
-		const requestId =
-			currentRequest.value?.uuid || currentRequest.value?.id;
-		const quoteId = quote.uuid || quote.id;
-		await respondToQuote(requestId, quoteId, "accept");
+		const requestUuid = currentRequest.value?.uuid;
+		const quoteUuid = quote.uuid || quote.id;
+		if (!requestUuid || !quoteUuid) return;
+		await respondToQuote(requestUuid, quoteUuid, "accept");
 		await loadRequest();
 	} catch (err) {
 		console.error("Failed to accept quote:", err);
@@ -1721,10 +1733,10 @@ const handleAcceptQuote = async (quote) => {
 
 const handleRejectQuote = async (quote) => {
 	try {
-		const requestId =
-			currentRequest.value?.uuid || currentRequest.value?.id;
-		const quoteId = quote.uuid || quote.id;
-		await respondToQuote(requestId, quoteId, "reject");
+		const requestUuid = currentRequest.value?.uuid;
+		const quoteUuid = quote.uuid || quote.id;
+		if (!requestUuid || !quoteUuid) return;
+		await respondToQuote(requestUuid, quoteUuid, "reject");
 		await loadRequest();
 	} catch (err) {
 		console.error("Failed to reject quote:", err);
@@ -1743,6 +1755,13 @@ const handleClickOutside = (e) => {
 };
 
 // Lifecycle
+watch(
+	() => props.id,
+	() => {
+		loadRequest();
+	},
+);
+
 onMounted(() => {
 	loadRequest();
 	document.addEventListener("click", handleClickOutside);

@@ -977,7 +977,7 @@ const confirmSubmit = async () => {
 			showSuccess("Service request created successfully!");
 			router.push({
 				name: "RequestDetail",
-				params: { id: result.data?.uuid || result.data?.id },
+				params: { id: result.data?.uuid },
 			});
 		}
 	} catch (err) {

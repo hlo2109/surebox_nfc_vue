@@ -105,14 +105,22 @@ const addCurrentCompanyLocation = (location) => {
 };
 
 const updateCurrentCompanyLocation = (updatedLocation) => {
-	const index = state.currentCompanyLocations.findIndex(location => location.id === updatedLocation.id);
+	const index = state.currentCompanyLocations.findIndex(
+		(location) =>
+			location.id === updatedLocation.id ||
+			location.uuid === updatedLocation.uuid ||
+			(updatedLocation.id != null && location.uuid === updatedLocation.id) ||
+			(updatedLocation.uuid != null && location.id === updatedLocation.uuid),
+	);
 	if (index !== -1) {
 		state.currentCompanyLocations[index] = updatedLocation;
 	}
 };
 
 const removeCurrentCompanyLocation = (locationId) => {
-	state.currentCompanyLocations = state.currentCompanyLocations.filter(location => location.id !== locationId);
+	state.currentCompanyLocations = state.currentCompanyLocations.filter(
+		(location) => location.id !== locationId && location.uuid !== locationId,
+	);
 };
 
 // Categories management

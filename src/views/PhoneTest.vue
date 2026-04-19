@@ -251,7 +251,7 @@
 
 <script setup>
 import { ref } from "vue";
-import PhoneInput from "../components/PhoneInput.vue";
+import PhoneInput from "@/components/common/PhoneInput.vue";
 import { parsePhoneNumber, isValidPhoneNumber } from "libphonenumber-js";
 
 const phoneNumber = ref("");

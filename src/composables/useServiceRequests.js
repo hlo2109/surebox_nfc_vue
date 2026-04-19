@@ -45,15 +45,15 @@ export const useServiceRequests = () => {
 
 	/**
 	 * Fetch a specific service request by ID
-	 * @param {number} requestId - Service request ID
+	 * @param {string} requestUuid - Service request public UUID (path param)
 	 * @returns {Promise<object>} Result with service request data
 	 */
-	const fetchServiceRequest = async (requestId) => {
+	const fetchServiceRequest = async (requestUuid) => {
 		try {
 			servicesStore.setLoading(true);
 			servicesStore.clearError();
 
-			const response = await serviceRequestsApi.getServiceRequest(requestId);
+			const response = await serviceRequestsApi.getServiceRequest(requestUuid);
 
 			if (response.success !== false) {
 				const request = response.data || response;

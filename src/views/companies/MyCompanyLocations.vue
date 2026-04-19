@@ -127,8 +127,8 @@
 					:company-id="companyId"
 					:locations="locations"
 					:loading="loading"
-					:can-add-locations="canManageLocations"
-					:can-manage-locations="canManageLocations"
+					:can-add-locations="canManageCompanyLocations"
+					:can-manage-locations="canManageCompanyLocations"
 					@refresh="loadLocations"
 				/>
 			</div>
@@ -145,8 +145,18 @@ import LocationsList from "@/components/companies/LocationsList.vue";
 const authStore = useAuthStore();
 const companyId = computed(() => authStore.companyId.value);
 
-const { canManageLocations } = usePermissions();
-console.log('canManageLocations:', canManageLocations.value);
+const { canManageLocations, canEditCompany, isSuperAdmin } = usePermissions();
+
+/** API permissions can omit manage_company_locations while the user is still company admin. */
+const canManageCompanyLocations = computed(
+	() =>
+		canManageLocations.value ||
+		canEditCompany.value ||
+		authStore.isCompanyAdmin.value ||
+		authStore.isAdmin.value ||
+		isSuperAdmin.value,
+);
+
 const { fetchMyCompanyLocations } = useCompanies();
 
 const locations = ref([]);

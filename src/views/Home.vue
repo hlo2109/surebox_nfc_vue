@@ -26,5 +26,3 @@ const userName = computed(() => {
 	return user?.name ?? user?.email?.split("@")[0] ?? "User";
 });
 </script>
-``` Now let me wire that up and verify both sub-components exist and have no
-errors.

@@ -750,6 +750,28 @@ export const useCompanies = () => {
 		}
 	};
 
+	const updateMyCompanyLocation = async (locationId, locationData) => {
+		try {
+			companiesStore.setLoading(true);
+			companiesStore.clearError();
+			const response = await companiesApi.updateMyCompanyLocation(locationId, locationData);
+			if (response.success !== false) {
+				const updated = response.data || response;
+				companiesStore.updateCurrentCompanyLocation(updated);
+				toast.showSuccess('Location updated successfully!');
+				return { success: true, data: updated };
+			}
+			throw new Error(response.message || 'Failed to update location');
+		} catch (error) {
+			const errorMessage = error.message || 'Failed to update location.';
+			companiesStore.setError(errorMessage);
+			toast.showError(errorMessage);
+			return { success: false, error: errorMessage };
+		} finally {
+			companiesStore.setLoading(false);
+		}
+	};
+
 	const fetchMyCompanyServiceRequests = async (params = {}) => {
 		try {
 			companiesStore.setLoading(true);
@@ -867,6 +889,7 @@ export const useCompanies = () => {
 		cancelMyCompanyInvitation,
 		fetchMyCompanyLocations,
 		addMyCompanyLocation,
+		updateMyCompanyLocation,
 		deleteMyCompanyLocation,
 		fetchMyCompanyServiceRequests,
 	};

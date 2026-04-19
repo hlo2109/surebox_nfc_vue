@@ -90,7 +90,10 @@ const clearError = () => {
 };
 
 const getNfcById = (id) => {
-	return state.nfcTags.find(tag => (tag.uuid ?? tag.id ?? tag.code) === id);
+	const sid = String(id);
+	return state.nfcTags.find(
+		tag => String(tag.uuid ?? tag.id ?? tag.code) === sid,
+	);
 };
 
 const getNfcByCode = (code) => {

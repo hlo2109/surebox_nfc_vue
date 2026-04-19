@@ -125,7 +125,7 @@
 						<!-- Box Details -->
 						<div class="space-y-3 mb-4">
 							<div
-								v-if="box.name"
+								v-if="boxNicknameOrName(box)"
 								class="flex items-center gap-3 text-gray-700"
 							>
 								<svg
@@ -147,13 +147,13 @@
 									>
 									<span
 										class="text-sm font-medium text-gray-900 block truncate"
-										>{{ box.name }}</span
+										>{{ boxNicknameOrName(box) }}</span
 									>
 								</div>
 							</div>
 
 							<div
-								v-if="box.location"
+								v-if="boxAddressOrLocation(box)"
 								class="flex items-start gap-3 text-gray-700"
 							>
 								<svg
@@ -181,7 +181,7 @@
 									>
 									<span
 										class="text-sm font-medium text-gray-900 block line-clamp-2"
-										>{{ box.location }}</span
+										>{{ boxAddressOrLocation(box) }}</span
 									>
 								</div>
 							</div>
@@ -299,7 +299,7 @@
 									class="absolute right-0 bottom-full mb-2 w-48 bg-white border border-gray-200 rounded-lg overflow-hidden z-10 shadow-lg"
 								>
 									<button
-										@click="viewBoxDetails(box)"
+										@click="openDetailModal(box)"
 										class="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
 									>
 										<svg
@@ -471,6 +471,191 @@
 				</div>
 			</div>
 		</div>
+
+		<Teleport to="body">
+			<div
+				v-if="detailModalOpen"
+				class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[1px]"
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="box-detail-title"
+				@click.self="closeDetailModal"
+			>
+				<div
+					class="bg-white rounded-xl border border-gray-200 shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+					@click.stop
+				>
+					<div
+						class="flex items-start justify-between gap-4 p-5 sm:p-6 border-b border-gray-200"
+					>
+						<div>
+							<h2
+								id="box-detail-title"
+								class="text-lg sm:text-xl font-bold text-gray-900"
+							>
+								Box details
+							</h2>
+							<p class="text-sm text-gray-500 mt-1">
+								View information. NFC / Box ID cannot be changed.
+							</p>
+						</div>
+						<button
+							type="button"
+							class="p-2 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-colors"
+							aria-label="Close"
+							@click="closeDetailModal"
+						>
+							<svg
+								class="w-5 h-5"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M6 18L18 6M6 6l12 12"
+								></path>
+							</svg>
+						</button>
+					</div>
+
+					<div v-if="detailBox" class="p-5 sm:p-6 space-y-5">
+						<div
+							class="flex items-center gap-3 p-3 rounded-lg bg-[#0D65AE]/5 border border-[#0D65AE]/20"
+						>
+							<div
+								class="bg-[#0D65AE]/10 p-2 rounded-lg border border-[#0D65AE]/20"
+							>
+								<svg
+									class="w-5 h-5 text-[#0D65AE]"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+									></path>
+								</svg>
+							</div>
+							<div class="min-w-0 flex-1">
+								<p class="text-xs text-gray-500">Box ID (NFC code)</p>
+								<p class="text-sm font-semibold text-gray-900 truncate">
+									{{ detailBox.code || "N/A" }}
+								</p>
+							</div>
+						</div>
+
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+							<div>
+								<p class="text-xs text-gray-500 mb-1">Created</p>
+								<p class="font-medium text-gray-900">
+									{{
+										detailBox.created_at
+											? formatDate(detailBox.created_at)
+											: "—"
+									}}
+								</p>
+							</div>
+							<div>
+								<p class="text-xs text-gray-500 mb-1">Status</p>
+								<p
+									v-if="!canEditNfc"
+									class="font-medium text-gray-900 capitalize"
+								>
+									{{ detailForm.status || "—" }}
+								</p>
+								<select
+									v-else
+									v-model="detailForm.status"
+									class="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#0D65AE]/30 focus:border-[#0D65AE]"
+								>
+									<option value="active">Active</option>
+									<option value="inactive">Inactive</option>
+								</select>
+							</div>
+						</div>
+
+						<div>
+							<label
+								class="block text-sm font-medium text-gray-700 mb-1"
+								for="detail-nickname"
+								>Name / label</label
+							>
+							<input
+								id="detail-nickname"
+								v-model="detailForm.nickname"
+								type="text"
+								:disabled="!canEditNfc"
+								:class="[
+									'w-full px-3 py-2 border rounded-lg text-gray-900',
+									canEditNfc
+										? 'border-gray-300 focus:ring-2 focus:ring-[#0D65AE]/30 focus:border-[#0D65AE]'
+										: 'border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed',
+								]"
+								placeholder="e.g. contact or box label"
+							/>
+						</div>
+
+						<div>
+							<label
+								class="block text-sm font-medium text-gray-700 mb-1"
+								for="detail-address"
+								>Location / address</label
+							>
+							<textarea
+								id="detail-address"
+								v-model="detailForm.address"
+								rows="3"
+								:disabled="!canEditNfc"
+								:class="[
+									'w-full px-3 py-2 border rounded-lg text-gray-900 resize-y min-h-[5rem]',
+									canEditNfc
+										? 'border-gray-300 focus:ring-2 focus:ring-[#0D65AE]/30 focus:border-[#0D65AE]'
+										: 'border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed',
+								]"
+								placeholder="Address or location notes"
+							></textarea>
+						</div>
+
+						<div
+							v-if="detailBox.description"
+							class="rounded-lg border border-gray-200 bg-gray-50 p-3"
+						>
+							<p class="text-xs text-gray-500 mb-1">Description</p>
+							<p class="text-sm text-gray-800 whitespace-pre-wrap">
+								{{ detailBox.description }}
+							</p>
+						</div>
+
+						<div
+							class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2 border-t border-gray-200"
+						>
+							<button
+								type="button"
+								class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+								@click="closeDetailModal"
+							>
+								{{ canEditNfc ? "Cancel" : "Close" }}
+							</button>
+							<button
+								v-if="canEditNfc"
+								type="button"
+								class="px-4 py-2 text-sm font-medium text-white bg-[#0D65AE] rounded-lg hover:bg-[#0D65AE]/90 border border-[#0D65AE] disabled:opacity-60"
+								:disabled="detailSaving"
+								@click="saveDetailModal"
+							>
+								{{ detailSaving ? "Saving…" : "Save changes" }}
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</Teleport>
 	</div>
 </template>
 
@@ -481,12 +666,36 @@ import { useNfc, useToast, usePermissions } from "@/composables";
 import { formatDate } from "@/utils/formatters";
 
 const router = useRouter();
-const { fetchNfcCodes, deleteNfcCode, loading, nfcCodes } = useNfc();
+const { fetchNfcCodes, deleteNfcCode, updateNfcCode, loading, nfcCodes } =
+	useNfc();
 const { showToast } = useToast();
 const { canViewNfc, canCreateNfc, canEditNfc, canDeleteNfc } = usePermissions();
 
 const activeDropdown = ref(null);
 const deleting = ref(null);
+
+const detailModalOpen = ref(false);
+const detailBox = ref(null);
+const detailSaving = ref(false);
+const detailForm = ref({
+	nickname: "",
+	address: "",
+	status: "active",
+});
+
+function boxNicknameOrName(box) {
+	return box?.nickname || box?.name || "";
+}
+
+function boxAddressOrLocation(box) {
+	return box?.address || box?.location || "";
+}
+
+function onDetailEscape(e) {
+	if (e.key === "Escape") {
+		closeDetailModal();
+	}
+}
 
 function toggleDropdown(boxId) {
 	activeDropdown.value = activeDropdown.value === boxId ? null : boxId;
@@ -496,20 +705,45 @@ function closeDropdowns() {
 	activeDropdown.value = null;
 }
 
-function viewBoxDetails(box) {
+function openDetailModal(box) {
 	closeDropdowns();
-	const details = [
-		`Box ID: ${box.code || "N/A"}`,
-		box.name ? `Name: ${box.name}` : null,
-		box.location ? `Location: ${box.location}` : null,
-		box.description ? `Description: ${box.description}` : null,
-		box.created_at ? `Created: ${formatDate(box.created_at)}` : null,
-		box.status ? `Status: ${box.status}` : null,
-	]
-		.filter(Boolean)
-		.join("\n");
+	detailBox.value = box;
+	detailForm.value = {
+		nickname: boxNicknameOrName(box),
+		address: boxAddressOrLocation(box),
+		status: box.status === "inactive" ? "inactive" : "active",
+	};
+	detailModalOpen.value = true;
+	document.addEventListener("keydown", onDetailEscape);
+	document.body.style.overflow = "hidden";
+}
 
-	alert(`Box Details:\n\n${details}`);
+function closeDetailModal() {
+	detailModalOpen.value = false;
+	detailBox.value = null;
+	document.removeEventListener("keydown", onDetailEscape);
+	document.body.style.overflow = "";
+}
+
+async function saveDetailModal() {
+	if (!detailBox.value || !canEditNfc.value) return;
+	const boxKey =
+		detailBox.value.uuid || detailBox.value.id || detailBox.value.code;
+	detailSaving.value = true;
+	try {
+		const payload = {
+			nickname: detailForm.value.nickname,
+			address: detailForm.value.address,
+			status: detailForm.value.status,
+		};
+		const result = await updateNfcCode(boxKey, payload);
+		if (result?.success) {
+			closeDetailModal();
+			await fetchNfcCodes();
+		}
+	} finally {
+		detailSaving.value = false;
+	}
 }
 
 function copyBoxId(box) {
@@ -535,22 +769,9 @@ async function confirmDelete(box) {
 		return;
 	}
 
-	// DEBUG: log full box object and resolved key so we can see what the API receives
-	console.log(
-		"[confirmDelete] full box object:",
-		JSON.stringify(box, null, 2),
-	);
 	const boxKey = box.uuid || box.id || box.code;
-	console.log(
-		"[confirmDelete] resolved boxKey →",
-		boxKey,
-		"(type:",
-		typeof boxKey,
-		")",
-	);
 	deleting.value = boxKey;
 	const result = await deleteNfcCode(boxKey);
-	console.log("[confirmDelete] deleteNfcCode result:", result);
 	deleting.value = null;
 
 	if (result?.success) {
@@ -590,6 +811,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	document.removeEventListener("click", handleClickOutside);
+	document.removeEventListener("keydown", onDetailEscape);
+	document.body.style.overflow = "";
 });
 </script>
 

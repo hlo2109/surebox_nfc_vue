@@ -60,8 +60,22 @@ export const getCities = async (departmentId) => {
 	}
 };
 
+/**
+ * Single city (includes departmentId / countryId for hierarchy).
+ * @param {number|string} cityId
+ */
+export const getCityById = async (cityId) => {
+	try {
+		const response = await apiClient.get(`/cities/${cityId}`);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
 export default {
 	getCountries,
 	getDepartments,
 	getCities,
+	getCityById,
 };

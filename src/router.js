@@ -32,7 +32,12 @@ import Profile from './views/Profile.vue';
 import Settings from './views/Settings.vue';
 import Unauthorized from './views/Unauthorized.vue';
 import { useAuthStore } from './stores/auth.store';
-import { PERMISSIONS } from './utils/permissions';
+import { PERMISSIONS, hasPermission } from './utils/permissions';
+import {
+	userHasCompanyMembership,
+	isPrimaryCompanyAdmin,
+	isPrimaryCompanyFieldStaff,
+} from './utils/companyContext';
 import { getAccessToken } from './utils/storage';
 
 const routes = [
@@ -197,7 +202,7 @@ const routes = [
 	{
 		path: '/my-company/requests',
 		component: () => import('./layouts/MainLayout.vue'),
-		meta: { requiresCompany: true },
+		meta: { requiresCompany: true, requiresCompanyAdmin: true },
 		children: [
 			{
 				path: '',
@@ -282,7 +287,7 @@ const routes = [
 	{
 		path: '/my-assignments',
 		component: () => import('./layouts/MainLayout.vue'),
-		meta: { requiresCompany: true },
+		meta: { requiresCompany: true, requiresCompanyEmployee: true },
 		children: [
 			{
 				path: '',
@@ -294,7 +299,7 @@ const routes = [
 	{
 		path: '/my-assignments/:id',
 		component: () => import('./layouts/MainLayout.vue'),
-		meta: { requiresCompany: true },
+		meta: { requiresCompany: true, requiresCompanyEmployee: true },
 		children: [
 			{
 				path: '',
@@ -362,6 +367,17 @@ const routes = [
 			},
 		],
 	},
+	{
+		path: '/help',
+		component: () => import('./layouts/MainLayout.vue'),
+		children: [
+			{
+				path: '',
+				name: 'Help',
+				component: () => import('./views/Help.vue'),
+			},
+		],
+	},
 
 ];
 
@@ -370,28 +386,26 @@ const router = createRouter({
 	routes,
 });
 
-// Route Guards with RBAC
+// Route guards — auth, empresa (admin vs empleado de campo), cliente sin empresa, permisos API
 router.beforeEach((to, from, next) => {
-	const publicPages = ['/login', '/register', '/forgot-password', '/reset-password', '/unauthorized'];
+	const publicPages = ['/login', '/register', '/forgot-password', '/reset-password', '/unauthorized', '/help'];
 	const authRequired = !publicPages.includes(to.path);
 	const jwt = getAccessToken();
 
-	// Check authentication
 	if (authRequired && !jwt) {
 		return next('/login');
 	}
 
-	// Check role-based permissions
-	if (to.meta.requiresRole) {
-		const authStore = useAuthStore();
-		const user = authStore.state.user;
+	const authStore = useAuthStore();
+	const user = authStore.state.user;
 
+	if (to.meta.requiresRole) {
 		if (!user) {
 			return next('/login');
 		}
 
 		const userRoles = Array.isArray(user.roles)
-			? user.roles.map(r => typeof r === 'string' ? r : r.name)
+			? user.roles.map((r) => (typeof r === 'string' ? r : r.name))
 			: user.role
 				? [user.role]
 				: [];
@@ -400,117 +414,87 @@ router.beforeEach((to, from, next) => {
 			? to.meta.requiresRole
 			: [to.meta.requiresRole];
 
-		const hasRequiredRole = requiredRoles.some(role => userRoles.includes(role));
+		const hasRequiredRole = requiredRoles.some((role) => userRoles.includes(role));
 
 		if (!hasRequiredRole) {
 			return next({
 				path: '/unauthorized',
 				query: {
-					message: `You need to be a ${requiredRoles.join(' or ')} to access this page.`
-				}
+					message: `You need to be a ${requiredRoles.join(' or ')} to access this page.`,
+				},
 			});
 		}
 	}
 
-	// Check if route requires company-admin role (role_in_company === 'admin')
-	if (to.meta.requiresCompanyAdmin) {
-		const authStore = useAuthStore();
-		const user = authStore.state.user;
-
-		if (!user) {
-			return next('/login');
-		}
-
-		const companies = user.companies || [];
-		const roleInCompany = companies.length > 0
-			? (companies[0].role_in_company
-				|| (typeof companies[0].role === 'string' ? companies[0].role : companies[0].role?.name)
-				|| null)
-			: null;
-
-		if (roleInCompany !== 'admin') {
-			return next({
-				path: '/unauthorized',
-				query: {
-					message: 'Only company administrators can access this page.'
-				}
-			});
-		}
-	}
-
-	// Check if route requires company
 	if (to.meta.requiresCompany) {
-		const authStore = useAuthStore();
-		const user = authStore.state.user;
-
 		if (!user) {
 			return next('/login');
 		}
-
-		// Check if user has a company
-		const hasCompany = (user.companies && user.companies.length > 0) ||
-			!!user.company_id ||
-			!!user.companyId;
-
-		if (!hasCompany) {
+		if (!userHasCompanyMembership(user)) {
 			return next({
 				path: '/',
 				query: {
-					message: 'You need to be associated with a company to access this page.'
-				}
+					message: 'You need to be associated with a company to access this page.',
+				},
 			});
 		}
 	}
 
-	// Check if route requires NO company (customer-only routes)
-	if (to.meta.requiresNoCompany) {
-		const authStore = useAuthStore();
-		const user = authStore.state.user;
-
-		if (user) {
-			const hasCompany = (user.companies && user.companies.length > 0) ||
-				!!user.company_id ||
-				!!user.companyId;
-
-			if (hasCompany) {
-				return next('/my-company');
-			}
-		}
-	}
-
-	// Check permission-based access
-	if (to.meta.requiresPermission) {
-		const authStore = useAuthStore();
-		const user = authStore.state.user;
-
+	if (to.meta.requiresCompanyAdmin) {
 		if (!user) {
 			return next('/login');
 		}
-
-		// Import hasPermission dynamically to avoid circular dependency
-		import('./utils/permissions').then(({ hasPermission }) => {
-			const requiredPermissions = Array.isArray(to.meta.requiresPermission)
-				? to.meta.requiresPermission
-				: [to.meta.requiresPermission];
-
-			const hasRequiredPermission = requiredPermissions.some(permission =>
-				hasPermission(user, permission)
-			);
-
-			if (!hasRequiredPermission) {
-				return next({
-					path: '/unauthorized',
-					query: {
-						message: 'You do not have the required permissions to access this page.'
-					}
-				});
-			}
-
-			next();
-		});
-	} else {
-		next();
+		if (!isPrimaryCompanyAdmin(user)) {
+			return next({
+				path: '/unauthorized',
+				query: {
+					message: 'Only company administrators can access this page.',
+				},
+			});
+		}
 	}
+
+	if (to.meta.requiresCompanyEmployee) {
+		if (!user) {
+			return next('/login');
+		}
+		if (!isPrimaryCompanyFieldStaff(user)) {
+			return next({
+				path: '/unauthorized',
+				query: {
+					message: 'This area is only for company field staff (assignments and NFC on site).',
+				},
+			});
+		}
+	}
+
+	if (to.meta.requiresNoCompany) {
+		if (user && userHasCompanyMembership(user)) {
+			return next('/my-company');
+		}
+	}
+
+	if (to.meta.requiresPermission) {
+		if (!user) {
+			return next('/login');
+		}
+		const requiredPermissions = Array.isArray(to.meta.requiresPermission)
+			? to.meta.requiresPermission
+			: [to.meta.requiresPermission];
+		const hasRequiredPermission = requiredPermissions.some((permission) =>
+			hasPermission(user, permission),
+		);
+		if (!hasRequiredPermission) {
+			return next({
+				path: '/unauthorized',
+				query: {
+					message: 'You do not have the required permissions to access this page.',
+				},
+			});
+		}
+	}
+
+	return next();
 });
 
 export default router;

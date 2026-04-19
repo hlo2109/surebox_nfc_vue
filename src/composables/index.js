@@ -13,8 +13,9 @@ import { useToast } from './useToast';
 import { usePermissions } from './usePermissions';
 import { useLocation } from './useLocation';
 import { useEmployeeAssignments } from './useEmployeeAssignments';
+import { useQuoteAiAssist } from './useQuoteAiAssist';
 
-export { useAuth, useNfc, useNfcReader, useCompanies, useServices, useServiceRequests, useToast, usePermissions, useLocation, useEmployeeAssignments };
+export { useAuth, useNfc, useNfcReader, useCompanies, useServices, useServiceRequests, useToast, usePermissions, useLocation, useEmployeeAssignments, useQuoteAiAssist };
 
 export default {
 	useAuth,
@@ -27,4 +28,5 @@ export default {
 	usePermissions,
 	useLocation,
 	useEmployeeAssignments,
+	useQuoteAiAssist,
 };

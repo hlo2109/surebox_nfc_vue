@@ -1,8 +1,8 @@
 import apiClient, { handleApiError } from './config';
+import { ApiAuth } from '@/constants/apiRoutes';
 
 /**
- * Authentication API Module
- * Handles all authentication-related API calls
+ * Authentication API — register, login, tokens, profile, invitations.
  */
 
 /**
@@ -17,7 +17,7 @@ import apiClient, { handleApiError } from './config';
  */
 export const register = async (userData) => {
 	try {
-		const response = await apiClient.post('/auth/register', userData);
+		const response = await apiClient.post(ApiAuth.REGISTER, userData);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -37,7 +37,7 @@ export const login = async (credentials) => {
 			console.log('Login attempt for:', credentials.email);
 		}
 		console.log('Login attempt for:', credentials);
-		const response = await apiClient.post('/auth/login', credentials);
+		const response = await apiClient.post(ApiAuth.LOGIN, credentials);
 		if (import.meta.env.DEV) {
 			console.log('Login successful');
 		}
@@ -58,7 +58,7 @@ export const login = async (credentials) => {
  */
 export const refreshToken = async (refreshToken) => {
 	try {
-		const response = await apiClient.post('/auth/refresh', { refreshToken });
+		const response = await apiClient.post(ApiAuth.REFRESH, { refreshToken });
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -74,7 +74,7 @@ export const refreshToken = async (refreshToken) => {
  */
 export const changePassword = async (passwordData) => {
 	try {
-		const response = await apiClient.post('/auth/change-password', passwordData);
+		const response = await apiClient.post(ApiAuth.CHANGE_PASSWORD, passwordData);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -87,7 +87,7 @@ export const changePassword = async (passwordData) => {
  */
 export const logout = async () => {
 	try {
-		const response = await apiClient.post('/auth/logout');
+		const response = await apiClient.post(ApiAuth.LOGOUT);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -100,7 +100,7 @@ export const logout = async () => {
  */
 export const getCurrentUser = async () => {
 	try {
-		const response = await apiClient.get('/auth/me');
+		const response = await apiClient.get(ApiAuth.ME);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -114,7 +114,7 @@ export const getCurrentUser = async () => {
  */
 export const getInvitation = async (token) => {
 	try {
-		const response = await apiClient.get(`/auth/invitations/${token}`);
+		const response = await apiClient.get(ApiAuth.INVITATION(token));
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));
@@ -132,7 +132,7 @@ export const getInvitation = async (token) => {
  */
 export const acceptInvitation = async (token, data = {}) => {
 	try {
-		const response = await apiClient.post(`/auth/invitations/${token}/accept`, data);
+		const response = await apiClient.post(ApiAuth.ACCEPT_INVITATION(token), data);
 		return response.data;
 	} catch (error) {
 		throw new Error(handleApiError(error));

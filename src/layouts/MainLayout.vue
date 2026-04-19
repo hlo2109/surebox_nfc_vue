@@ -324,7 +324,7 @@
 									<span>My Requests</span>
 								</router-link>
 							</li>
-							<li v-if="!hasCompany && canViewNfc">
+							<li v-if="canViewNfc">
 								<router-link
 									to="/mybox"
 									@click="closeSidebarMobile"
@@ -578,69 +578,6 @@
 						</ul>
 					</div>
 
-					<!-- Quick Actions Section -->
-					<div class="pt-4">
-						<p
-							class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3"
-						>
-							Quick Actions
-						</p>
-						<ul class="space-y-1">
-							<li v-if="canCreateNfc">
-								<router-link
-									to="/create-box"
-									@click="closeSidebarMobile"
-									class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 border border-transparent hover:border-gray-200"
-								>
-									<svg
-										class="w-5 h-5"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M12 4v16m8-8H4"
-										></path>
-									</svg>
-									<span>Add New Box</span>
-								</router-link>
-							</li>
-							<li v-if="!hasCompany">
-								<router-link
-									to="/requests/create"
-									@click="closeSidebarMobile"
-									class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 border border-transparent hover:border-gray-200"
-								>
-									<svg
-										class="w-5 h-5"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<circle
-											cx="12"
-											cy="12"
-											r="9"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-										></circle>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M12 4v16m8-8H4"
-										></path>
-									</svg>
-									<span>New Service Request</span>
-								</router-link>
-							</li>
-						</ul>
-					</div>
-
 					<!-- Bottom Section -->
 					<div class="pt-4 mt-auto">
 						<div
@@ -674,7 +611,9 @@
 										Learn how to use SureBox
 									</p>
 									<button
+										type="button"
 										class="text-xs font-medium text-[#0D65AE] hover:underline"
+										@click="router.push('/help'); closeSidebarMobile()"
 									>
 										View Guide →
 									</button>
@@ -732,15 +671,16 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useAuth } from "@/composables/useAuth";
 import { useAuthStore } from "@/stores/auth.store";
 import { usePermissions } from "@/composables/usePermissions";
 
 const route = useRoute();
+const router = useRouter();
 const { logout: logoutUser, getCurrentUser } = useAuth();
 const authStore = useAuthStore();
-const { canViewNfc, canCreateNfc } = usePermissions();
+const { canViewNfc } = usePermissions();
 
 const sidebarOpen = ref(false);
 const userDropdownOpen = ref(false);
@@ -754,12 +694,9 @@ const userEmail = computed(
 // Computed property to check if user has company
 const hasCompany = computed(() => authStore.hasCompany.value);
 
-// isCompanyAdmin → role_in_company === 'admin' (company creator/owner)
-// isCompanyEmployee → has a company but is NOT the admin (invited member)
+// isCompanyAdmin / isCompanyEmployee — misma lógica que el router (utils/companyContext)
 const isCompanyAdmin = computed(() => authStore.isCompanyAdmin.value);
-const isCompanyEmployee = computed(
-	() => hasCompany.value && !isCompanyAdmin.value,
-);
+const isCompanyEmployee = computed(() => authStore.isCompanyEmployee.value);
 
 function toggleSidebar() {
 	sidebarOpen.value = !sidebarOpen.value;

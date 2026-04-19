@@ -8,6 +8,11 @@ import {
 	getUser,
 	clearAuth
 } from '@/utils/storage';
+import {
+	getPrimaryCompanyRole,
+	isPrimaryCompanyAdmin,
+	isPrimaryCompanyFieldStaff,
+} from '@/utils/companyContext';
 
 /**
  * Authentication Store
@@ -59,18 +64,13 @@ const companyId = computed(() => {
 });
 
 // The role the current user holds inside their company (e.g. 'admin' | 'employee')
-const companyRole = computed(() => {
-	const companies = state.user?.companies || [];
-	if (companies.length > 0) {
-		return companies[0].role_in_company
-			|| (typeof companies[0].role === 'string' ? companies[0].role : companies[0].role?.name)
-			|| null;
-	}
-	return null;
-});
+const companyRole = computed(() => getPrimaryCompanyRole(state.user));
 
 // True only when the user's company role is 'admin' (i.e. the company owner/creator)
-const isCompanyAdmin = computed(() => companyRole.value === 'admin');
+const isCompanyAdmin = computed(() => isPrimaryCompanyAdmin(state.user));
+
+// Company member who is not the company admin — assignments, NFC in the field
+const isCompanyEmployee = computed(() => isPrimaryCompanyFieldStaff(state.user));
 
 // Actions
 const setAuthData = (data) => {
@@ -141,6 +141,7 @@ export const useAuthStore = () => {
 		companyId,
 		companyRole,
 		isCompanyAdmin,
+		isCompanyEmployee,
 
 		// Actions
 		setAuthData,
