@@ -933,6 +933,196 @@
 									</p>
 								</div>
 								<div
+									v-if="isDeliveryFulfillmentRequest(selectedRequest)"
+									class="pt-2 border-t border-gray-200"
+								>
+									<p
+										class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2"
+									>
+										Package tracking (customer NFC + live route)
+									</p>
+									<p
+										v-if="companyPackageDeliveryLoading"
+										class="text-sm text-gray-400"
+									>
+										Loading delivery status…
+									</p>
+									<template v-else>
+										<button
+											v-if="canCreatePackageTracking"
+											type="button"
+											:disabled="creatingPackageDelivery"
+											class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-[#0D65AE] rounded-lg hover:bg-[#0a5290] disabled:opacity-50"
+											@click="handleCreatePackageTracking"
+										>
+											{{
+												creatingPackageDelivery
+													? "Starting…"
+													: "Start package tracking"
+											}}
+										</button>
+										<p
+											v-else-if="
+												!companyPackageDeliveryPayload?.delivery &&
+												['accepted', 'in_progress'].includes(
+													(selectedRequest.status || '')
+														.toLowerCase(),
+												) &&
+												!canManageServices
+											"
+											class="text-xs text-gray-500"
+										>
+											Only company admins with service permissions
+											can link courier tracking to this request.
+										</p>
+										<div
+											v-if="companyPackageDeliveryPayload?.delivery"
+											class="mt-3 space-y-3"
+										>
+											<p class="text-sm text-gray-800">
+												<span class="font-medium">Courier run:</span>
+												<span class="capitalize ml-1">{{
+													companyPackageDeliveryPayload.delivery
+														.status || "—"
+												}}</span>
+											</p>
+											<div
+												v-if="companyPackageDeliveryPayload.delivery.destinationNfc"
+												class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs"
+											>
+												<p class="font-semibold text-slate-600 uppercase mb-1">
+													Customer SureBox tag
+												</p>
+												<p class="text-slate-900 font-medium">
+													{{
+														companyPackageDeliveryPayload.delivery
+															.destinationNfc.nickname || "NFC drop-off"
+													}}
+												</p>
+												<p
+													v-if="
+														companyPackageDeliveryPayload.delivery
+															.destinationNfc.address
+													"
+													class="text-slate-600 mt-1"
+												>
+													{{
+														companyPackageDeliveryPayload.delivery
+															.destinationNfc.address
+													}}
+												</p>
+												<a
+													v-if="
+														packageMapLinkForNfc(
+															companyPackageDeliveryPayload.delivery
+																.destinationNfc,
+														)
+													"
+													:href="
+														packageMapLinkForNfc(
+															companyPackageDeliveryPayload.delivery
+																.destinationNfc,
+														)
+													"
+													target="_blank"
+													rel="noopener noreferrer"
+													class="text-[#0D65AE] font-medium hover:underline mt-2 inline-block"
+												>
+													Open tag on map
+												</a>
+											</div>
+											<p
+												v-if="
+													companyPackageDeliveryPayload.delivery
+														.destinationAddress
+												"
+												class="text-xs text-gray-600"
+											>
+												<span class="font-medium text-gray-700">Route address:</span>
+												{{
+													companyPackageDeliveryPayload.delivery
+														.destinationAddress
+												}}
+											</p>
+											<div
+												v-if="companyPackageDeliveryPayload.alerts?.length"
+												class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs"
+											>
+												<p class="font-semibold text-amber-900 uppercase mb-1">
+													Alerts
+												</p>
+												<ul class="space-y-1">
+													<li
+														v-for="(al, alIdx) in companyPackageDeliveryPayload.alerts"
+														:key="al.uuid || alIdx"
+													>
+														<span class="font-medium capitalize">{{
+															String(al.alertType || "").replace(/_/g, " ")
+														}}</span>
+														<span class="text-amber-900/90"> — {{ al.message }}</span>
+													</li>
+												</ul>
+											</div>
+											<div
+												v-if="
+													companyPackageDeliveryPayload.events?.length
+												"
+											>
+												<p class="text-xs font-medium text-gray-600 mb-1">
+													Timeline (GPS / NFC)
+												</p>
+												<ul class="space-y-2 max-h-56 overflow-y-auto">
+													<li
+														v-for="(ev, evIdx) in companyPackageDeliveryPayload.events"
+														:key="ev.uuid || evIdx"
+														class="text-xs bg-slate-50 border border-slate-100 rounded px-2 py-2"
+													>
+														<div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+															<span class="font-medium capitalize text-gray-900">{{
+																String(ev.eventType || "").replace(/_/g, " ")
+															}}</span>
+															<span class="text-gray-400">{{
+																formatDateTime(ev.createdAt)
+															}}</span>
+														</div>
+														<p
+															v-if="ev.employeeUuid"
+															class="text-[10px] text-gray-400 font-mono mt-0.5"
+														>
+															Courier: {{ ev.employeeUuid }}
+														</p>
+														<a
+															v-if="ev.lat != null && ev.lng != null"
+															:href="packageOsmLink(ev.lat, ev.lng)"
+															target="_blank"
+															rel="noopener noreferrer"
+															class="text-[#0D65AE] hover:underline mt-1 inline-block"
+														>
+															View on map
+														</a>
+														<p
+															v-if="packageEventExtra(ev)"
+															class="text-gray-500 mt-1"
+														>
+															{{ packageEventExtra(ev) }}
+														</p>
+													</li>
+												</ul>
+											</div>
+											<router-link
+												v-if="companyPackageDeliveryPayload.delivery?.uuid"
+												:to="{
+													path: '/my-company/packages',
+													query: { track: companyPackageDeliveryPayload.delivery.uuid },
+												}"
+												class="inline-flex text-xs font-medium text-[#0D65AE] hover:underline"
+											>
+												Open full tracking hub →
+											</router-link>
+										</div>
+									</template>
+								</div>
+								<div
 									v-if="
 										requestAssignmentsList(selectedRequest)
 											.length
@@ -1728,8 +1918,13 @@ import {
 	assignEmployeeMyCompany,
 	createMyCompanyQuote,
 	updateMyCompanyServiceRequestStatus,
+	createMyCompanyPackageDelivery,
+	getMyCompanyPackageDelivery,
 } from "@/api/companies.api";
-import { isQuotePricingRequest } from "@/utils/serviceRequestDisplay";
+import {
+	isQuotePricingRequest,
+	isDeliveryFulfillmentRequest,
+} from "@/utils/serviceRequestDisplay";
 import { formatCurrency as formatCurrencyUtil } from "@/utils/formatters";
 
 // ─── Composables ──────────────────────────────────────────────────────────────
@@ -1779,6 +1974,10 @@ const updatingStatus = ref(false);
 // Employee assignment (multi-select; ids match memberOptionValue)
 const selectedAssigneeIds = ref([]);
 const assigningEmployee = ref(false);
+
+const companyPackageDeliveryLoading = ref(false);
+const companyPackageDeliveryPayload = ref(null);
+const creatingPackageDelivery = ref(false);
 
 function requestAssignmentsList(req) {
 	if (!req) return [];
@@ -1883,6 +2082,9 @@ function quoteDetailsPreview(quote) {
 
 function activityEntryTitle(entry) {
 	const t = (entry?.type || "").toString();
+	if (t === "package_delivery_created") {
+		return "Package delivery tracking started";
+	}
 	if (t === "quote_sent") {
 		const pt = (entry.proposalType || "").toString();
 		if (pt === "counter_proposal") return "Quote — counter-proposal";
@@ -2106,7 +2308,69 @@ const loadMembers = async () => {
 	}
 };
 
+// ─── Package tracking helpers (maps + payload) ────────────────────────────────
+function packageOsmLink(lat, lng) {
+	return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lng)}#map=16/${lat}/${lng}`;
+}
+
+function packageMapLinkForNfc(nfc) {
+	if (!nfc || nfc.lat == null || nfc.lng == null) return "";
+	return packageOsmLink(nfc.lat, nfc.lng);
+}
+
+function packageEventExtra(ev) {
+	const p = ev.payload;
+	if (!p || typeof p !== "object") return "";
+	if (typeof p.distanceMeters === "number") {
+		return `Distance from destination zone: ${Math.round(p.distanceMeters)} m`;
+	}
+	return "";
+}
+
 // ─── Modal ────────────────────────────────────────────────────────────────────
+async function loadCompanyPackageDelivery() {
+	const r = selectedRequest.value;
+	companyPackageDeliveryPayload.value = null;
+	if (!r || !isDeliveryFulfillmentRequest(r)) {
+		return;
+	}
+	const st = (r.status || "").toString().toLowerCase();
+	if (!["accepted", "in_progress", "completed"].includes(st)) {
+		return;
+	}
+	companyPackageDeliveryLoading.value = true;
+	try {
+		const requestId = r.uuid || r.id;
+		const res = await getMyCompanyPackageDelivery(requestId);
+		companyPackageDeliveryPayload.value =
+			res?.data &&
+			(res.data.delivery !== undefined || Array.isArray(res.data.events))
+				? res.data
+				: res;
+	} catch (err) {
+		const msg = (err?.message || "").toLowerCase();
+		if (!msg.includes("not found")) {
+			showError(err?.message || "Could not load package delivery.");
+		}
+		companyPackageDeliveryPayload.value = null;
+	} finally {
+		companyPackageDeliveryLoading.value = false;
+	}
+}
+
+const canCreatePackageTracking = computed(() => {
+	const r = selectedRequest.value;
+	if (!r || !canManageServices.value || !isDeliveryFulfillmentRequest(r)) {
+		return false;
+	}
+	if (!["accepted", "in_progress"].includes((r.status || "").toLowerCase())) {
+		return false;
+	}
+	if (companyPackageDeliveryLoading.value) return false;
+	if (companyPackageDeliveryPayload.value?.delivery) return false;
+	return true;
+});
+
 const openModal = (request) => {
 	const list = requestAssignmentsList(request);
 	selectedRequest.value = {
@@ -2118,6 +2382,7 @@ const openModal = (request) => {
 			: [],
 	};
 	showModal.value = true;
+	void loadCompanyPackageDelivery();
 	// Pre-fill status selector
 	newStatus.value = request.status || "";
 	statusChangeComment.value = "";
@@ -2137,6 +2402,7 @@ const closeModal = () => {
 		quoteForm.value = { totalPrice: "", details: "" };
 		quoteSendContext.value = null;
 		selectedAssigneeIds.value = [];
+		companyPackageDeliveryPayload.value = null;
 	}, 200);
 };
 
@@ -2260,6 +2526,7 @@ const submitStatusUpdate = async () => {
 		selectedRequest.value = updated;
 		statusChangeComment.value = "";
 		newStatus.value = updated.status || "";
+		void loadCompanyPackageDelivery();
 	} catch (err) {
 		showError(err.message || "Failed to update status.");
 	} finally {
@@ -2326,12 +2593,47 @@ const submitAssignEmployee = async () => {
 		if (idx !== -1) requests.value[idx] = updated;
 		selectedRequest.value = updated;
 		selectedAssigneeIds.value = [];
+		void loadCompanyPackageDelivery();
 	} catch (err) {
 		showError(err.message || "Failed to assign employee.");
 	} finally {
 		assigningEmployee.value = false;
 	}
 };
+
+async function handleCreatePackageTracking() {
+	if (!selectedRequest.value || !canCreatePackageTracking.value) return;
+	const requestId =
+		selectedRequest.value.uuid || selectedRequest.value.id;
+	creatingPackageDelivery.value = true;
+	try {
+		await createMyCompanyPackageDelivery(requestId, {});
+		showSuccess(
+			"Package tracking started. Couriers use My Packages to start the run; the customer sees progress here.",
+		);
+		await loadRequests();
+		const refreshed = requests.value.find(
+			(r) => (r.uuid || r.id) === requestId,
+		);
+		if (refreshed && showModal.value) {
+			const list = requestAssignmentsList(refreshed);
+			selectedRequest.value = {
+				...refreshed,
+				assignments: [...list],
+				assignment: list[0] || null,
+				companyActivityLog: Array.isArray(refreshed.companyActivityLog)
+					? refreshed.companyActivityLog
+					: [],
+			};
+			newStatus.value = refreshed.status || "";
+		}
+		await loadCompanyPackageDelivery();
+	} catch (err) {
+		showError(err.message || "Could not start package tracking.");
+	} finally {
+		creatingPackageDelivery.value = false;
+	}
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const getStatusColor = (status) => {

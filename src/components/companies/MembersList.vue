@@ -109,6 +109,12 @@
 										)
 									}}
 								</span>
+								<span
+									v-if="isDeliveryProfile(member)"
+									class="px-2 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-900"
+								>
+									Delivery courier
+								</span>
 							</div>
 
 							<div class="mt-1 space-y-1">
@@ -512,6 +518,24 @@
 					</p>
 				</div>
 
+				<div>
+					<label
+						class="block text-sm font-semibold text-gray-900 mb-2"
+					>
+						Job profile
+					</label>
+					<Select
+						v-model="editForm.jobProfile"
+						:options="jobProfileOptions"
+						optionLabel="label"
+						optionValue="value"
+						class="w-full"
+					/>
+					<p class="text-xs text-gray-500 mt-1.5">
+						“Delivery courier” highlights package / NFC runs in the workspace.
+					</p>
+				</div>
+
 				<div class="flex justify-end gap-3 pt-2">
 					<button
 						type="button"
@@ -746,8 +770,14 @@ const COMPANY_MEMBER_ROLES_IN_COMPANY = [
 
 const roles = ref([...COMPANY_MEMBER_ROLES_IN_COMPANY]);
 
+const jobProfileOptions = [
+	{ label: "General", value: "general" },
+	{ label: "Delivery courier", value: "delivery" },
+];
+
 const editForm = ref({
 	role: null,
+	jobProfile: "general",
 });
 
 const memberToEdit = ref(null);
@@ -791,6 +821,13 @@ const getInitials = (member) => {
 	}
 
 	return name.substring(0, 2).toUpperCase();
+};
+
+const isDeliveryProfile = (member) => {
+	const jp = (member.job_profile || member.jobProfile || "general")
+		.toString()
+		.toLowerCase();
+	return jp === "delivery";
 };
 
 const formatRole = (role) => {
@@ -893,8 +930,12 @@ const startEditMember = (member) => {
 	// Find the role object that matches the member's current role
 	const currentRoleName = member.role_in_company || member.role || "";
 	const matchingRole = roles.value.find((r) => r.name === currentRoleName);
+	const jp = (member.job_profile || member.jobProfile || "general")
+		.toString()
+		.toLowerCase();
 	editForm.value = {
 		role: matchingRole || null,
+		jobProfile: jp === "delivery" ? "delivery" : "general",
 	};
 	showEditDialog.value = true;
 };
@@ -919,12 +960,13 @@ const handleEditMember = async () => {
 
 	const result = await updateMyCompanyMember(userId, {
 		roleInCompany: roleName,
+		jobProfile: editForm.value.jobProfile || "general",
 	});
 
 	if (result.success) {
 		showEditDialog.value = false;
 		memberToEdit.value = null;
-		editForm.value = { role: null };
+		editForm.value = { role: null, jobProfile: "general" };
 		emit("refresh");
 	}
 	editing.value = false;

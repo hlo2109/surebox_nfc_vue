@@ -621,6 +621,31 @@
 						</button>
 
 						<button
+							v-if="showDeliveryTrackingTab"
+							@click="activeTab = 'delivery'"
+							:class="[
+								'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+								activeTab === 'delivery'
+									? 'bg-[#0D65AE] text-white shadow-md'
+									: 'text-gray-600 hover:text-gray-900 hover:bg-white',
+							]"
+						>
+							<svg
+								class="w-4 h-4"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+								/>
+							</svg>
+							Package tracking
+						</button>
+						<button
 							@click="activeTab = 'activity'"
 							:class="[
 								'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
@@ -1129,6 +1154,191 @@
 							</div>
 						</div>
 
+						<!-- ── Delivery tracking (NFC-verified courier) ── -->
+						<div
+							v-else-if="
+								showDeliveryTrackingTab && activeTab === 'delivery'
+							"
+						>
+							<div
+								v-if="packageDeliveryLoading"
+								class="flex flex-col items-center justify-center py-12"
+							>
+								<svg
+									class="animate-spin w-8 h-8 text-[#0D65AE] mb-3"
+									fill="none"
+									viewBox="0 0 24 24"
+								>
+									<circle
+										class="opacity-25"
+										cx="12"
+										cy="12"
+										r="10"
+										stroke="currentColor"
+										stroke-width="4"
+									/>
+									<path
+										class="opacity-75"
+										fill="currentColor"
+										d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+									/>
+								</svg>
+								<p class="text-gray-400 text-sm">
+									Loading delivery tracking…
+								</p>
+							</div>
+							<div
+								v-else-if="packageDeliveryError"
+								class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+							>
+								{{ packageDeliveryError }}
+							</div>
+							<div v-else-if="packageDeliveryPayload" class="space-y-6">
+								<div
+									class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3"
+								>
+									<p class="text-xs font-semibold text-slate-500 uppercase">
+										Status
+									</p>
+									<p class="text-lg font-semibold text-slate-900 capitalize">
+										{{ packageDeliveryPayload.delivery?.status || "—" }}
+									</p>
+									<div
+										v-if="packageDeliveryPayload.delivery?.destinationNfc"
+										class="pt-3 border-t border-slate-200"
+									>
+										<p class="text-xs font-semibold text-slate-500 uppercase mb-1">
+											Your SureBox tag
+										</p>
+										<p class="text-sm font-medium text-slate-900">
+											{{
+												packageDeliveryPayload.delivery.destinationNfc
+													.nickname || "NFC drop-off"
+											}}
+										</p>
+										<p
+											v-if="
+												packageDeliveryPayload.delivery.destinationNfc
+													.address
+											"
+											class="text-xs text-slate-600 mt-1"
+										>
+											{{
+												packageDeliveryPayload.delivery.destinationNfc
+													.address
+											}}
+										</p>
+										<a
+											v-if="
+												packageTrackNfcMap(
+													packageDeliveryPayload.delivery.destinationNfc,
+												)
+											"
+											:href="
+												packageTrackNfcMap(
+													packageDeliveryPayload.delivery.destinationNfc,
+												)
+											"
+											target="_blank"
+											rel="noopener noreferrer"
+											class="text-xs text-[#0D65AE] font-medium hover:underline mt-2 inline-block"
+										>
+											Open tag on map
+										</a>
+									</div>
+									<p
+										v-if="packageDeliveryPayload.delivery?.destinationAddress"
+										class="text-sm text-slate-600 pt-3 border-t border-slate-200"
+									>
+										<span class="font-medium text-slate-800">Route address:</span>
+										{{ packageDeliveryPayload.delivery.destinationAddress }}
+									</p>
+								</div>
+								<div
+									v-if="packageDeliveryPayload.alerts?.length"
+									class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"
+								>
+									<h3 class="text-sm font-semibold text-amber-900 mb-2">
+										Alerts
+									</h3>
+									<ul class="space-y-2 text-sm text-amber-950">
+										<li
+											v-for="(al, aidx) in packageDeliveryPayload.alerts"
+											:key="al.uuid || aidx"
+										>
+											<span class="font-medium capitalize">{{
+												String(al.alertType || "").replace(/_/g, " ")
+											}}</span>
+											<span> — {{ al.message }}</span>
+											<span class="block text-xs text-amber-800/90 mt-0.5">{{
+												formatDateTime(al.createdAt)
+											}}</span>
+										</li>
+									</ul>
+								</div>
+								<div>
+									<h3
+										class="text-sm font-semibold text-gray-700 mb-3"
+									>
+										Timeline
+									</h3>
+									<ol
+										v-if="
+											packageDeliveryPayload.events?.length
+										"
+										class="space-y-3 border-l-2 border-slate-200 ml-2 pl-4"
+									>
+										<li
+											v-for="(ev, idx) in packageDeliveryPayload.events"
+											:key="ev.uuid || idx"
+											class="relative text-sm"
+										>
+											<span
+												class="absolute -left-[1.1rem] top-1.5 w-2 h-2 rounded-full bg-[#0D65AE] ring-4 ring-white"
+											/>
+											<span
+												class="font-medium text-gray-900 capitalize"
+											>{{
+												String(ev.eventType || "").replace(
+													/_/g,
+													" ",
+												)
+											}}</span>
+											<span class="text-gray-400 text-xs ml-2">{{
+												formatDateTime(ev.createdAt)
+											}}</span>
+											<a
+												v-if="ev.lat != null && ev.lng != null"
+												:href="packageTrackOsm(ev.lat, ev.lng)"
+												target="_blank"
+												rel="noopener noreferrer"
+												class="block text-xs text-[#0D65AE] hover:underline mt-1"
+											>
+												View on map
+											</a>
+											<p
+												v-if="packageTrackEventExtra(ev)"
+												class="text-xs text-gray-500 mt-1"
+											>
+												{{ packageTrackEventExtra(ev) }}
+											</p>
+										</li>
+									</ol>
+									<p v-else class="text-sm text-gray-400">
+										No GPS or NFC events recorded yet. The courier
+										checks in with your NFC tag at drop-off when they
+										arrive.
+									</p>
+								</div>
+								<router-link
+									:to="{ name: 'CustomerMyPackages' }"
+									class="inline-flex text-sm font-medium text-[#0D65AE] hover:underline"
+								>
+									All my packages &amp; tracking →
+								</router-link>
+							</div>
+						</div>
+
 						<!-- ── Activity Tab ── -->
 						<div v-else-if="activeTab === 'activity'">
 							<div
@@ -1472,6 +1682,7 @@ import { useServiceRequests } from "@/composables/useServiceRequests";
 import {
 	respondToQuote,
 	cancelServiceRequest,
+	getServiceRequestPackageDelivery,
 } from "@/api/serviceRequests.api";
 import QuoteCard from "@/components/requests/QuoteCard.vue";
 import { useToast } from "@/composables/useToast";
@@ -1482,6 +1693,7 @@ import {
 	requestNotes,
 	formatRequestLocation,
 	isQuotePricingRequest,
+	isDeliveryFulfillmentRequest,
 	listRequestAssignments,
 	assignmentStatusLabel,
 	assignmentBadgeClassFor,
@@ -1520,6 +1732,9 @@ const rejectQuoteReason = ref("");
 const rejectQuoteSubmitting = ref(false);
 const newStatus = ref("");
 const isUpdating = ref(false);
+const packageDeliveryLoading = ref(false);
+const packageDeliveryError = ref(null);
+const packageDeliveryPayload = ref(null);
 
 // Computed
 const currentRequest = computed(() => state.currentServiceRequest);
@@ -1532,6 +1747,13 @@ const assignmentsList = computed(() =>
 	listRequestAssignments(currentRequest.value),
 );
 const assignmentsCount = computed(() => assignmentsList.value.length);
+
+const showDeliveryTrackingTab = computed(() => {
+	const r = currentRequest.value;
+	if (!r || !isDeliveryFulfillmentRequest(r)) return false;
+	const st = (r.status || "").toString().toLowerCase();
+	return ["accepted", "in_progress", "completed"].includes(st);
+});
 
 /** Only pending quotes while the request is still in quoting phase. */
 function quoteAllowsActions(quote) {
@@ -1552,9 +1774,74 @@ watch(
 	() => currentRequest.value?.uuid,
 	(uuid, prevUuid) => {
 		if (!uuid || uuid === prevUuid) return;
-		activeTab.value = isQuotePricingRequest(currentRequest.value)
+		packageDeliveryPayload.value = null;
+		packageDeliveryError.value = null;
+		const r = currentRequest.value;
+		const deliveryDefault =
+			isDeliveryFulfillmentRequest(r) &&
+			["accepted", "in_progress", "completed"].includes(
+				(r?.status || "").toString().toLowerCase(),
+			);
+		activeTab.value = isQuotePricingRequest(r)
 			? "quotes"
-			: "assignment";
+			: deliveryDefault
+				? "delivery"
+				: "assignment";
+	},
+);
+
+function packageTrackOsm(lat, lng) {
+	return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lng)}#map=16/${lat}/${lng}`;
+}
+
+function packageTrackNfcMap(nfc) {
+	if (!nfc || nfc.lat == null || nfc.lng == null) return "";
+	return packageTrackOsm(nfc.lat, nfc.lng);
+}
+
+function packageTrackEventExtra(ev) {
+	const p = ev.payload;
+	if (!p || typeof p !== "object") return "";
+	if (typeof p.distanceMeters === "number") {
+		return `Distance from destination zone: ${Math.round(p.distanceMeters)} m`;
+	}
+	return "";
+}
+
+async function loadPackageDelivery() {
+	const uuid = currentRequest.value?.uuid;
+	if (!uuid || !showDeliveryTrackingTab.value) return;
+	packageDeliveryLoading.value = true;
+	packageDeliveryError.value = null;
+	try {
+		const data = await getServiceRequestPackageDelivery(uuid);
+		const inner =
+			data?.data &&
+			(data.data.delivery !== undefined || Array.isArray(data.data.events))
+				? data.data
+				: data?.data ?? data;
+		packageDeliveryPayload.value = inner;
+	} catch (err) {
+		packageDeliveryPayload.value = null;
+		const msg = (err?.message || String(err)).toLowerCase();
+		if (msg.includes("not found")) {
+			packageDeliveryError.value =
+				"The company has not started package tracking for this delivery yet. Check back after they link the courier run to your request.";
+		} else {
+			packageDeliveryError.value =
+				err?.message || "Could not load delivery tracking.";
+		}
+	} finally {
+		packageDeliveryLoading.value = false;
+	}
+}
+
+watch(
+	() => activeTab.value,
+	(tab) => {
+		if (tab === "delivery" && showDeliveryTrackingTab.value) {
+			loadPackageDelivery();
+		}
 	},
 );
 

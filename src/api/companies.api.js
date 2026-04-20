@@ -1000,6 +1000,35 @@ export const createMyCompanyQuote = async (requestId, quoteData) => {
 };
 
 /**
+ * Create a package delivery linked to a service request (delivery fulfillment + NFC drop-off).
+ */
+export const createMyCompanyPackageDelivery = async (requestId, body = {}) => {
+	try {
+		const response = await apiClient.post(
+			`/my/company/service-requests/${requestId}/package-delivery`,
+			body
+		);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
+ * Company: get package delivery timeline for a service request.
+ */
+export const getMyCompanyPackageDelivery = async (requestId) => {
+	try {
+		const response = await apiClient.get(
+			`/my/company/service-requests/${requestId}/package-delivery`
+		);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
  * Update a quote status for a service request (my company)
  * Requires `manage_company_services` permission.
  * @param {number} quoteId - Quote ID
@@ -1102,4 +1131,6 @@ export default {
 	assignEmployeeMyCompany,
 	createMyCompanyQuote,
 	updateMyCompanyQuoteStatus,
+	createMyCompanyPackageDelivery,
+	getMyCompanyPackageDelivery,
 };

@@ -252,6 +252,33 @@
 									<span>Dashboard</span>
 								</router-link>
 							</li>
+							<li v-if="isAuthenticated">
+								<router-link
+									to="/my-packages"
+									@click="closeSidebarMobile"
+									:class="[
+										'flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 border',
+										isActive('/my-packages')
+											? 'bg-[#0D65AE]/5 text-[#0D65AE] border-[#0D65AE]/20'
+											: 'text-gray-700 hover:bg-gray-50 border-transparent',
+									]"
+								>
+									<svg
+										class="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+										/>
+									</svg>
+									<span>My packages &amp; tracking</span>
+								</router-link>
+							</li>
 							<!-- Normal users only -->
 							<li v-if="!hasCompany">
 								<router-link
@@ -356,6 +383,7 @@
 										'flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 border',
 										isActive('/my-company') &&
 										!isActive('/my-company/requests') &&
+										!isActive('/my-company/packages') &&
 										!isActive('/my-company/members') &&
 										!isActive('/my-company/locations')
 											? 'bg-[#0D65AE]/5 text-[#0D65AE] border-[#0D65AE]/20'
@@ -405,6 +433,34 @@
 										></path>
 									</svg>
 									<span>Orders</span>
+								</router-link>
+							</li>
+
+							<li v-if="canManageCompanyWorkspace">
+								<router-link
+									to="/my-company/packages"
+									@click="closeSidebarMobile"
+									:class="[
+										'flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 border',
+										isActive('/my-company/packages')
+											? 'bg-[#0D65AE]/5 text-[#0D65AE] border-[#0D65AE]/20'
+											: 'text-gray-700 hover:bg-gray-50 border-transparent',
+									]"
+								>
+									<svg
+										class="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+										/>
+									</svg>
+									<span>Packages &amp; live tracking</span>
 								</router-link>
 							</li>
 
@@ -527,6 +583,34 @@
 										></path>
 									</svg>
 									<span>My Assignments</span>
+								</router-link>
+							</li>
+
+							<li v-if="isCompanyEmployee">
+								<router-link
+									to="/delivery"
+									@click="closeSidebarMobile"
+									:class="[
+										'flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 border',
+										isActive('/delivery')
+											? 'bg-[#0D65AE]/5 text-[#0D65AE] border-[#0D65AE]/20'
+											: 'text-gray-700 hover:bg-gray-50 border-transparent',
+									]"
+								>
+									<svg
+										class="w-5 h-5"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1h1m-1-4h-1m4-4h1m-1 4h-1m-4 4h1"
+										/>
+									</svg>
+									<span>Courier deliveries</span>
 								</router-link>
 							</li>
 
@@ -690,6 +774,9 @@ const canManageCompanyWorkspace = computed(
 // isCompanyAdmin / isCompanyEmployee — misma lógica que el router (utils/companyContext)
 const isCompanyAdmin = computed(() => authStore.isCompanyAdmin.value);
 const isCompanyEmployee = computed(() => authStore.isCompanyEmployee.value);
+
+/** Same source as router/session: store computed (avoids stale reads on authStore.state). */
+const isAuthenticated = computed(() => !!authStore.isAuthenticated?.value);
 
 function toggleSidebar() {
 	sidebarOpen.value = !sidebarOpen.value;

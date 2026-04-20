@@ -40,6 +40,20 @@ export const getServiceRequest = async (requestId) => {
 };
 
 /**
+ * Customer: package delivery timeline (location events + NFC proof) for delivery-type services.
+ */
+export const getServiceRequestPackageDelivery = async (requestId) => {
+	try {
+		const response = await apiClient.get(
+			ApiServiceRequests.PACKAGE_DELIVERY(requestId),
+		);
+		return response.data;
+	} catch (error) {
+		throw new Error(handleApiError(error));
+	}
+};
+
+/**
  * Create a new service request
  * @param {object} requestData - Service request data
  * @param {string} requestData.serviceId - Service UUID (required)
@@ -255,6 +269,7 @@ export const recordAssignmentTracking = async (assignmentId, trackingData) => {
 export default {
 	getServiceRequests,
 	getServiceRequest,
+	getServiceRequestPackageDelivery,
 	createServiceRequest,
 	cancelServiceRequest,
 	respondToQuote,

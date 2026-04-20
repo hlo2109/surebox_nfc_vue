@@ -35,6 +35,8 @@ export const ApiServiceRequests = {
 	QUOTE_RESPOND: (requestId, quoteId) =>
 		`/service-requests/${requestId}/quotes/${quoteId}/respond`,
 	RATE: (requestId) => `/service-requests/${requestId}/rate`,
+	PACKAGE_DELIVERY: (requestId) =>
+		`/service-requests/${requestId}/package-delivery`,
 };
 
 export const ApiMyEmployee = {
@@ -54,6 +56,8 @@ export const ApiMyCompany = {
 	SERVICE_REQUEST_STATUS: (requestId) => `/my/company/service-requests/${requestId}/status`,
 	SERVICE_REQUEST_ASSIGN: (requestId) => `/my/company/service-requests/${requestId}/assign`,
 	SERVICE_REQUEST_QUOTE: (requestId) => `/my/company/service-requests/${requestId}/quote`,
+	SERVICE_REQUEST_PACKAGE_DELIVERY: (requestId) =>
+		`/my/company/service-requests/${requestId}/package-delivery`,
 };
 
 /** Feed global en plataforma (polling); mismo contenido para usuarios autenticados. */

@@ -37,6 +37,12 @@ export function isQuotePricingRequest(req) {
 	return requestPricingMode(req) === "quote";
 }
 
+/** Service is fulfilled as a courier / package delivery (NFC-verified drop-off). */
+export function isDeliveryFulfillmentRequest(req) {
+	const ft = req?.fulfillmentType ?? req?.fulfillment_type ?? "in_person";
+	return String(ft).toLowerCase() === "delivery";
+}
+
 /**
  * Normalise assignment rows from GET /service-requests/:id (assignments[])
  * or a single `assignment` object from some list views.

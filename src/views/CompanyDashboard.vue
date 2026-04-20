@@ -638,6 +638,29 @@
 								View All Requests
 							</button>
 
+							<!-- Package deliveries (hub: CSV, API tokens, list) -->
+							<button
+								type="button"
+								@click="router.push('/my-company/packages')"
+								title="See all routes, maps, and alerts"
+								class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-900 focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-all"
+							>
+								<svg
+									class="w-4 h-4"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+									/>
+								</svg>
+								Packages &amp; live tracking
+							</button>
+
 							<!-- Manage Services (outline) -->
 							<button
 								type="button"
@@ -705,6 +728,50 @@
 							</button>
 							</template>
 
+							<template v-else>
+								<button
+									type="button"
+									@click="router.push('/my-packages')"
+									class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-[#0D65AE] rounded-lg hover:bg-[#0b579a] focus:ring-2 focus:ring-[#0D65AE] focus:ring-offset-2 transition-all"
+								>
+									<svg
+										class="w-4 h-4"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+										/>
+									</svg>
+									My packages &amp; tracking
+								</button>
+								<button
+									v-if="isCompanyFieldStaff"
+									type="button"
+									@click="router.push('/delivery')"
+									class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-800 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all"
+								>
+									<svg
+										class="w-4 h-4"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1h1m-1-4h-1m4-4h1m-1 4h-1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+										/>
+									</svg>
+									Courier deliveries
+								</button>
+							</template>
+
 							<!-- Divider -->
 							<div class="border-t border-gray-100 my-1"></div>
 
@@ -755,7 +822,10 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth.store";
-import { canManageCompanyWorkspace as userCanManageCompanyWorkspace } from "@/utils/companyContext";
+import {
+	canManageCompanyWorkspace as userCanManageCompanyWorkspace,
+	isPrimaryCompanyFieldStaff,
+} from "@/utils/companyContext";
 import { getMyCompany, getMyCompanyServiceRequests } from "@/api/companies.api";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -769,6 +839,10 @@ const authStore = useAuthStore();
 
 const canManageCompanyWorkspace = computed(() =>
 	userCanManageCompanyWorkspace(authStore.state.user),
+);
+
+const isCompanyFieldStaff = computed(() =>
+	isPrimaryCompanyFieldStaff(authStore.state.user),
 );
 
 // Safely read the companyRole computed ref and capitalise it

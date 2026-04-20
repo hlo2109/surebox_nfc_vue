@@ -144,6 +144,42 @@
 
 				</div>
 
+				<!-- Quick links (packages + requests) -->
+				<div
+					class="flex flex-wrap gap-3 mb-6 sm:mb-8"
+				>
+					<button
+						type="button"
+						@click="router.push('/my-packages')"
+						class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-[#0D65AE] rounded-lg hover:bg-[#0b579a] shadow-sm border border-[#0D65AE]/20"
+					>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+							/>
+						</svg>
+						My packages &amp; tracking
+					</button>
+					<button
+						type="button"
+						@click="router.push('/requests')"
+						class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+					>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+							/>
+						</svg>
+						My requests
+					</button>
+				</div>
+
 				<!-- ─── Recent Service Requests ───────────────────────────────── -->
 				<div class="mb-6 sm:mb-8">
 					<div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">

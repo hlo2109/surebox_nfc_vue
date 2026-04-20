@@ -245,6 +245,29 @@ const routes = [
 		],
 	},
 	{
+		path: '/my-company/packages',
+		component: () => import('./layouts/MainLayout.vue'),
+		meta: { requiresCompany: true, requiresCompanyAdmin: true },
+		children: [
+			{
+				path: '',
+				name: 'MyCompanyPackages',
+				component: () => import('./views/packages/MyCompanyPackages.vue'),
+			},
+		],
+	},
+	{
+		path: '/my-packages',
+		component: () => import('./layouts/MainLayout.vue'),
+		children: [
+			{
+				path: '',
+				name: 'CustomerMyPackages',
+				component: () => import('./views/packages/CustomerMyPackages.vue'),
+			},
+		],
+	},
+	{
 		path: '/my-company/members',
 		component: () => import('./layouts/MainLayout.vue'),
 		meta: { requiresCompany: true, requiresCompanyAdmin: true },
